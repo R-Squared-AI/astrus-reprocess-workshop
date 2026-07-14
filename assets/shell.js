@@ -1,76 +1,81 @@
 /* ============================================================================
-   Astrus Reprocess Workshop — shared engine (Round 3)
-   Faithful, NON-interactive Salesforce Communication page + shared helpers.
-   Round 3: badge = "New attachments received"; lines = Submission Details + the
-   4 LOBs (with a selection count); on-state reads "Will populate"; text is
-   trimmed to the essentials; bold, satisfying states. Still pre-extraction:
-   the only known facts are which documents are new vs already-processed and the
-   line names.
+   Astrus Reprocess Workshop — shared engine (Round 7: upload flow, dual mode)
+   No more emails: underwriters drag-and-drop attachments into the Communication.
+   Two modes (from ?mode=):
+     initial    — Communication just created, no submission yet → Process submission
+     additional — Submission exists → upload more, review, Reprocess
+   Flow (both): Upload → Review → Lines → Process/Reprocess, over a faithful,
+   non-interactive Salesforce page. Drag-drop is a demo (checkmark animation, no
+   real upload). Pre-extraction: only file names + which are new are known.
    ============================================================================ */
 (function () {
   "use strict";
+
+  let MODE = /mode=additional/.test(location.search) ? "additional" : "initial";
 
   const data = {
     com: "COM-0022689",
     sub: "SUB 022689",
     sul: "SUL-3212",
     account: "Cooper Engineering",
-    subject: "FW: 2026-2027 Cooper Engineering GL Auto WC XS Submission",
+    subject: "2026-2027 Cooper Engineering GL Auto WC XS Submission",
     from: "mlettieri@astrusins.com",
     to: "submissions-uat@astrusins.com",
     messageDate: "7/13/2026, 3:37 PM",
     underwriter: "Karen Rivara",
-    latestEmail: "Jul 13, 2026 · 9:14 AM",
     owner: "Astrus AI Integration User",
-    engine: {
-      status: "Requires Review",
-      stage: "complete",
-      filesPrep: "5 / 5",
-      filesExt: "5 / 5",
-      lastProgress: "7/13/2026, 4:10:13 PM",
-      completed: "7/13/2026, 4:22:32 PM"
-    },
     protectedField: "Estimated / Proposed Bound Premium",
-    followup: { file: "Vehicle_Schedule_REVISED.xlsx", when: "Jul 13, 2026 · 9:14 AM" },
-    newAttachmentCount: 1,
-    // Selectable lines: Submission Details (submission-level) + the 4 LOBs.
     lines: [
       { id: "sub", label: "Submission Details", kind: "sub" },
       { id: "gl", label: "General Liability", kind: "lob" },
       { id: "ca", label: "Commercial Auto", kind: "lob" },
       { id: "wc", label: "Workers' Compensation", kind: "lob" },
-      { id: "xs", label: "Excess / Umbrella", kind: "lob" }
+      { id: "xs", label: "Excess Liability", kind: "lob" }
     ],
-    files: [
-      { name: "ACORD_125_Commercial_Application.pdf", type: "pdf", size: "1.2 MB", isNew: false },
-      { name: "Vehicle_Schedule_2024.xlsx", type: "xlsx", size: "88 KB", isNew: false },
-      { name: "GL_Loss_Runs_5yr.pdf", type: "pdf", size: "640 KB", isNew: false },
-      { name: "WC_Experience_Mod.pdf", type: "pdf", size: "210 KB", isNew: false },
-      { name: "Statement_of_Values.xlsx", type: "xlsx", size: "44 KB", isNew: false },
-      { name: "Vehicle_Schedule_REVISED.xlsx", type: "xlsx", size: "91 KB", isNew: true }
-    ]
+    // The base submission's documents (already processed in `additional` mode).
+    baseFiles: [
+      { name: "ACORD_125_Commercial_Application.pdf", type: "pdf", size: "1.2 MB" },
+      { name: "Vehicle_Schedule_2024.xlsx", type: "xlsx", size: "88 KB" },
+      { name: "GL_Loss_Runs_5yr.pdf", type: "pdf", size: "640 KB" },
+      { name: "WC_Experience_Mod.pdf", type: "pdf", size: "210 KB" },
+      { name: "Statement_of_Values.xlsx", type: "xlsx", size: "44 KB" }
+    ],
+    // Sample files offered by "add sample files": all of them on initial, the
+    // revised vehicle schedule on additional.
+    sampleAdditional: [{ name: "Vehicle_Schedule_REVISED.xlsx", type: "xlsx", size: "91 KB" }]
   };
-
-  const MOMENTS = [
-    { key: "arrival", num: "01", label: "Follow-up" },
-    { key: "files", num: "02", label: "Documents" },
-    { key: "scope", num: "03", label: "Lines" },
-    { key: "run", num: "04", label: "Reprocess" }
-  ];
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
+  function extType(name) {
+    const m = /\.([a-z0-9]+)$/i.exec(name || "");
+    const e = (m ? m[1] : "file").toLowerCase();
+    return e === "xls" ? "xlsx" : e === "jpeg" ? "jpg" : e;
+  }
 
-  /* ---- scope helpers ---------------------------------------------------- */
-  // scope = { excludedDocs:Set, whole:bool, lob:Set(lineIds) }
+  /* ---- scope --------------------------------------------------------------
+     scope.uploaded  : [{name,type,size}]  files the user dropped / sampled
+     scope.excludedDocs : Set(name)        review toggles turned off
+     scope.whole : bool ; scope.lob : Set(lineIds)
+     scope._just : Set(name)               just-added (for checkmark animation) */
   function newScope() {
-    return { excludedDocs: new Set(), whole: false, lob: new Set() };
+    return { uploaded: [], excludedDocs: new Set(), whole: false, lob: new Set(), _just: new Set() };
+  }
+  function alreadyProcessed() {
+    return MODE === "additional" ? data.baseFiles.slice() : [];
+  }
+  function sampleFiles() {
+    return MODE === "additional" ? data.sampleAdditional.slice() : data.baseFiles.slice();
+  }
+  function docsInPlay(scope) {
+    // already-processed (additional) + uploaded
+    return alreadyProcessed().concat(scope.uploaded);
   }
   function includedDocs(scope) {
-    return data.files.filter((f) => !scope.excludedDocs.has(f.name));
+    return docsInPlay(scope).filter((f) => !scope.excludedDocs.has(f.name));
   }
   function selectedLines(scope) {
     return scope.whole ? data.lines.slice() : data.lines.filter((l) => scope.lob.has(l.id));
@@ -84,89 +89,160 @@
   function selectedCount(scope) {
     return scope.whole ? data.lines.length : scope.lob.size;
   }
-
-  /* ---- badge (Round 3: New attachments received) ----------------------- */
-  function statusBadge() {
-    return '<span class="slds-badge badge-attn">📎 New attachments received</span>';
+  function hasUploads(scope) {
+    return scope.uploaded.length > 0 || alreadyProcessed().length > 0;
   }
 
-  /* ---- standard status strip (Round 5: rendered by the shell so it is
-     IDENTICAL on every concept — concepts must not render their own) ------ */
+  /* ---- mode-derived labels --------------------------------------------- */
+  const M = {
+    get finalLabel() { return MODE === "additional" ? "Reprocess" : "Process submission"; },
+    get finalShort() { return MODE === "additional" ? "Reprocess" : "Process"; },
+    get uploadTitle() { return MODE === "additional" ? "Upload additional attachments" : "Upload attachments"; },
+    get offLabel() { return MODE === "additional" ? '<span class="lock-ic">🔒</span> Locked' : "Not included"; },
+    get verb() { return MODE === "additional" ? "Populate" : "Create"; }
+  };
+
+  function moments() {
+    return [
+      { num: "01", label: "Upload" },
+      { num: "02", label: "Review" },
+      { num: "03", label: "Lines" },
+      { num: "04", label: M.finalShort }
+    ];
+  }
+
+  /* ---- badge + status strip (mode-aware) ------------------------------- */
+  function statusBadge() {
+    return MODE === "additional"
+      ? '<span class="slds-badge badge-attn">📎 New attachments received</span>'
+      : '<span class="slds-badge badge-draft">📄 Communication created</span>';
+  }
   function statusStripHTML() {
-    const e = data.engine;
+    if (MODE === "additional") {
+      return (
+        '<dl class="cc-status" id="cc-status">' +
+        '<dt>Status</dt><dd><span class="slds-badge badge-warning">Requires Review</span></dd>' +
+        "<dt>Stage</dt><dd>complete</dd>" +
+        "<dt>Files</dt><dd>Preprocessed 5 · Extracted 5</dd>" +
+        "<dt>Last Progress</dt><dd>7/13/2026, 4:10:13 PM</dd>" +
+        "<dt>Completed</dt><dd>7/13/2026, 4:22:32 PM</dd></dl>"
+      );
+    }
     return (
       '<dl class="cc-status" id="cc-status">' +
-      '<dt>Status</dt><dd><span class="slds-badge badge-warning">' + e.status + "</span></dd>" +
-      "<dt>Stage</dt><dd>" + e.stage + "</dd>" +
-      "<dt>Files</dt><dd>Preprocessed " + e.filesPrep + " · Extracted " + e.filesExt + "</dd>" +
-      "<dt>Last Progress</dt><dd>" + e.lastProgress + "</dd>" +
-      "<dt>Completed</dt><dd>" + e.completed + "</dd>" +
-      "</dl>"
+      '<dt>Status</dt><dd><span class="slds-badge badge-neutral">Not processed</span></dd>' +
+      "<dt>Stage</dt><dd>—</dd>" +
+      "<dt>Files</dt><dd>Preprocessed 0 · Extracted 0</dd>" +
+      "<dt>Submission</dt><dd>Not created yet</dd></dl>"
     );
   }
 
-  /* ---- toast ------------------------------------------------------------ */
-  function toast(variant, title, message, ms) {
-    let wrap = document.querySelector(".toast-wrap");
-    if (!wrap) {
-      wrap = document.createElement("div");
-      wrap.className = "toast-wrap";
-      document.body.appendChild(wrap);
+  /* ---- status banner (the "first tile") -------------------------------- */
+  function bannerHTML() {
+    if (MODE === "additional") {
+      return (
+        '<div class="cc-banner"><span class="cc-banner-ic">✓</span>' +
+        "<div><strong>Submission created · " + esc(data.sub) + "</strong>" +
+        "<span>Upload any additional attachments, then reprocess.</span></div></div>"
+      );
     }
-    const t = document.createElement("div");
-    t.className = "toast toast--" + variant;
-    t.innerHTML =
-      '<div class="ic" aria-hidden="true">' +
-      (variant === "success" ? "✓" : variant === "warning" ? "⚠" : "✕") +
-      "</div><div><strong>" + esc(title) + "</strong><span>" + esc(message) +
-      '</span></div><div class="x" role="button" aria-label="Close">✕</div>';
-    t.querySelector(".x").onclick = () => t.remove();
-    wrap.appendChild(t);
-    setTimeout(() => t.remove(), ms || 5000);
+    return (
+      '<div class="cc-banner"><span class="cc-banner-ic">✓</span>' +
+      "<div><strong>Communication record created</strong>" +
+      "<span>Upload the attachments to process this submission.</span></div></div>"
+    );
   }
 
-  /* ---- modal ------------------------------------------------------------ */
-  function confirmModal(opts) {
-    return new Promise((resolve) => {
-      const back = document.createElement("div");
-      back.className = "modal-backdrop";
-      back.innerHTML =
-        '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(opts.title) +
-        '"><header>' + esc(opts.title) + '</header><div class="modal-body">' + opts.body +
-        '</div><footer><button class="slds-btn" data-x="cancel">' + esc(opts.cancelLabel || "Cancel") +
-        '</button><button class="slds-btn ' + (opts.destructive ? "slds-btn--destructive" : "slds-btn--brand") +
-        '" data-x="ok">' + esc(opts.confirmLabel || "Confirm") + "</button></footer></div>";
-      function close(v) {
-        back.remove();
-        document.removeEventListener("keydown", onKey);
-        resolve(v);
-      }
-      function onKey(e) {
-        if (e.key === "Escape") close(false);
-      }
-      back.querySelector('[data-x="cancel"]').onclick = () => close(false);
-      back.querySelector('[data-x="ok"]').onclick = () => close(true);
-      back.onclick = (e) => {
-        if (e.target === back) close(false);
+  /* ---- upload step (drag-drop demo) ------------------------------------ */
+  function uploadRow(f, justNew) {
+    return (
+      '<div class="up-file' + (justNew ? " just-added" : "") + '">' +
+      '<span class="file-ic file-ic--' + f.type + '">' + f.type.toUpperCase() + "</span>" +
+      '<span class="up-file-name">' + esc(f.name) + "</span>" +
+      '<span class="up-file-size">' + esc(f.size || "") + "</span>" +
+      '<span class="up-file-check" aria-label="Uploaded">✓</span>' +
+      '<button class="up-file-x" data-up-remove="' + esc(f.name) + '" aria-label="Remove ' + esc(f.name) + '">✕</button>' +
+      "</div>"
+    );
+  }
+  function renderUploadStep(scope) {
+    const list = scope.uploaded.length
+      ? '<div class="up-list">' + scope.uploaded.map((f) => uploadRow(f, scope._just.has(f.name))).join("") + "</div>"
+      : "";
+    const alreadyNote =
+      MODE === "additional"
+        ? '<p class="up-note">' + alreadyProcessed().length + " document(s) already on this submission. Add anything new below.</p>"
+        : "";
+    return (
+      '<p class="cc-section-title">' + M.uploadTitle + "</p>" +
+      alreadyNote +
+      '<div class="up-zone" id="up-zone" tabindex="0" role="button" aria-label="Drag and drop attachments">' +
+      '<div class="up-zone-ic">⬆</div>' +
+      '<div class="up-zone-title">Drag &amp; drop attachments here</div>' +
+      '<div class="up-zone-sub"><button class="up-link" data-up-browse type="button">browse</button> · ' +
+      '<button class="up-link" data-up-sample type="button">add sample files</button></div>' +
+      "</div>" +
+      list +
+      '<input type="file" id="up-input" multiple style="display:none" />'
+    );
+  }
+  // Wire the upload interactions. rerender() should re-render the whole card.
+  function bindUploadStep(root, scope, rerender) {
+    function addFiles(files) {
+      const names = new Set(scope.uploaded.map((f) => f.name));
+      scope._just = new Set();
+      files.forEach((f) => {
+        if (names.has(f.name)) return;
+        names.add(f.name);
+        scope.uploaded.push(f);
+        scope._just.add(f.name);
+      });
+      rerender();
+      setTimeout(() => { scope._just = new Set(); }, 900);
+    }
+    const zone = root.querySelector("#up-zone");
+    const input = root.querySelector("#up-input");
+    if (zone) {
+      zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("drag-over"); });
+      zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+      zone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        zone.classList.remove("drag-over");
+        const dropped = Array.from((e.dataTransfer && e.dataTransfer.files) || []).map((file) => ({
+          name: file.name,
+          type: extType(file.name),
+          size: fmtSize(file.size)
+        }));
+        if (dropped.length) addFiles(dropped);
+      });
+    }
+    const browse = root.querySelector("[data-up-browse]");
+    if (browse && input) {
+      browse.onclick = () => input.click();
+      input.onchange = () => {
+        const picked = Array.from(input.files || []).map((file) => ({ name: file.name, type: extType(file.name), size: fmtSize(file.size) }));
+        if (picked.length) addFiles(picked);
       };
-      document.addEventListener("keydown", onKey);
-      document.body.appendChild(back);
-      back.querySelector('[data-x="ok"]').focus();
+    }
+    const sample = root.querySelector("[data-up-sample]");
+    if (sample) sample.onclick = () => addFiles(sampleFiles().map((f) => ({ ...f })));
+    root.querySelectorAll("[data-up-remove]").forEach((b) => {
+      b.onclick = () => {
+        const n = b.dataset.upRemove;
+        scope.uploaded = scope.uploaded.filter((f) => f.name !== n);
+        rerender();
+      };
     });
   }
-
-  /* ---- follow-up bell (terse) ------------------------------------------ */
-  function bellAlertHTML() {
-    return (
-      '<div class="cc-alert cc-alert--bell">' +
-      '<div class="cc-alert-ic">🔔</div>' +
-      "<div><strong>New attachment received.</strong> <em>" + esc(data.followup.file) +
-      "</em> was linked here. Nothing was reprocessed — you decide what happens next.</div></div>"
-    );
+  function fmtSize(bytes) {
+    if (!bytes && bytes !== 0) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
   }
 
-  /* ---- document picker (terse; all included by default) ---------------- */
-  function fileRow(f, scope) {
+  /* ---- review step (toggle attachments) -------------------------------- */
+  function reviewRow(f, scope) {
     const on = !scope.excludedDocs.has(f.name);
     return (
       '<div class="doc-row' + (on ? " is-in" : " is-out") + '">' +
@@ -174,76 +250,131 @@
       '" role="switch" aria-checked="' + on + '" aria-label="Include ' + esc(f.name) + '"></button>' +
       '<span class="file-ic file-ic--' + f.type + '">' + f.type.toUpperCase() + "</span>" +
       '<span class="doc-name">' + esc(f.name) + "</span>" +
-      '<span class="doc-size">' + esc(f.size) + "</span></div>"
+      '<span class="doc-size">' + esc(f.size || "") + "</span></div>"
     );
   }
-  function renderFiles(scope) {
-    const news = data.files.filter((f) => f.isNew);
-    const old = data.files.filter((f) => !f.isNew);
+  function renderReview(scope) {
+    const already = alreadyProcessed().filter((f) => docNotRemoved(scope, f));
+    const uploaded = scope.uploaded;
     const inCount = includedDocs(scope).length;
+    const total = docsInPlay(scope).length;
     function group(title, arr) {
       if (!arr.length) return "";
       return (
         '<div class="doc-group"><div class="doc-group-head">' + title + " (" + arr.length + ")</div>" +
-        arr.map((f) => fileRow(f, scope)).join("") + "</div>"
+        arr.map((f) => reviewRow(f, scope)).join("") + "</div>"
       );
     }
+    if (!total) {
+      return '<div class="docs-block"><p class="docs-empty">No attachments yet — go back and upload some.</p></div>';
+    }
     return (
+      '<div class="docs-note"><span class="docs-note-ic">⚠️</span><span>Only turn off documents that are <strong>exact or older versions</strong> of the newly uploaded ones. Every other document is needed to cross-reference, calculate and produce all fields.</span></div>' +
       '<div class="docs-block">' +
-      '<div class="docs-head"><strong>Documents</strong><span class="docs-count">' + inCount + " of " + data.files.length + " included</span></div>" +
-      group("New attachment", news) +
-      group("Already processed", old) +
+      '<div class="docs-head"><strong>Review attachments</strong><span class="docs-count">' + inCount + " of " + total + " included</span></div>" +
+      group(MODE === "additional" ? "New — uploaded" : "Uploaded", uploaded) +
+      group("Already processed", already) +
       "</div>"
     );
   }
+  function docNotRemoved() { return true; }
 
-  /* ---- run summary (terse; "populate" language) ------------------------ */
+  /* ---- run summary (mode-aware) ---------------------------------------- */
   function computeRunSummary(scope) {
     const inDocs = includedDocs(scope);
-    const pop = selectedLines(scope);
+    const sel = selectedLines(scope);
     const locked = lockedLines(scope);
     const lines = [];
-    lines.push({ kind: "docs", text: "Reads " + inDocs.length + " of " + data.files.length + " documents." });
-    if (pop.length) lines.push({ kind: "populate", text: "Populates " + pop.map((l) => l.label).join(", ") + "." });
-    if (locked.length) lines.push({ kind: "lock", text: "Locked: " + locked.map((l) => l.label).join(", ") + "." });
+    lines.push({ kind: "docs", text: "Reads " + inDocs.length + " of " + docsInPlay(scope).length + " attachments." });
+    if (sel.length) lines.push({ kind: "populate", text: M.verb + "s " + sel.map((l) => l.label).join(", ") + "." });
+    if (locked.length) {
+      lines.push({
+        kind: "lock",
+        text: (MODE === "additional" ? "Locked: " : "Not included: ") + locked.map((l) => l.label).join(", ") + "."
+      });
+    }
     lines.push({ kind: "protect", text: data.protectedField + " protected." });
     return { lines: lines, selectedCount: selectedCount(scope), total: data.lines.length, whole: scope.whole, includedDocs: inDocs.length };
   }
 
-  /* ---- reprocess (guard + confirm + toast) ----------------------------- */
-  async function runReprocess(scope) {
-    if (!hasSelection(scope)) {
-      toast("warning", "Choose what to populate", "Pick at least one line, or the entire submission.");
+  /* ---- process / reprocess (guard + confirm + toast) ------------------- */
+  function toast(variant, title, message, ms) {
+    let wrap = document.querySelector(".toast-wrap");
+    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; document.body.appendChild(wrap); }
+    const t = document.createElement("div");
+    t.className = "toast toast--" + variant;
+    t.innerHTML = '<div class="ic" aria-hidden="true">' + (variant === "success" ? "✓" : variant === "warning" ? "⚠" : "✕") +
+      "</div><div><strong>" + esc(title) + "</strong><span>" + esc(message) + '</span></div><div class="x" role="button" aria-label="Close">✕</div>';
+    t.querySelector(".x").onclick = () => t.remove();
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), ms || 5200);
+  }
+  function confirmModal(opts) {
+    return new Promise((resolve) => {
+      const back = document.createElement("div");
+      back.className = "modal-backdrop";
+      back.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(opts.title) + '"><header>' + esc(opts.title) +
+        '</header><div class="modal-body">' + opts.body + '</div><footer><button class="slds-btn" data-x="cancel">' + esc(opts.cancelLabel || "Cancel") +
+        '</button><button class="slds-btn ' + (opts.destructive ? "slds-btn--destructive" : "slds-btn--brand") + '" data-x="ok">' + esc(opts.confirmLabel || "Confirm") + "</button></footer></div>";
+      function close(v) { back.remove(); document.removeEventListener("keydown", onKey); resolve(v); }
+      function onKey(e) { if (e.key === "Escape") close(false); }
+      back.querySelector('[data-x="cancel"]').onclick = () => close(false);
+      back.querySelector('[data-x="ok"]').onclick = () => close(true);
+      back.onclick = (e) => { if (e.target === back) close(false); };
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(back);
+      back.querySelector('[data-x="ok"]').focus();
+    });
+  }
+  async function runProcess(scope) {
+    if (!hasUploads(scope)) {
+      toast("warning", "Upload attachments first", "Drag & drop at least one attachment before processing.");
       return false;
     }
-    const pop = selectedLines(scope);
+    if (!hasSelection(scope)) {
+      toast("warning", "Choose lines", "Pick at least one line, or the entire submission.");
+      return false;
+    }
+    const sel = selectedLines(scope);
     const inDocs = includedDocs(scope);
-    const headline = scope.whole
-      ? "Reprocess the entire submission?"
-      : "Populate " + pop.length + " of " + data.lines.length + " lines?";
-    const body =
-      "<p>Reads the <strong>" + inDocs.length + " included document" + (inDocs.length === 1 ? "" : "s") +
-      "</strong> and populates <strong>" + esc(pop.map((l) => l.label).join(", ")) +
-      "</strong>.</p>" + (scope.whole ? "" : "<p>Every other line stays locked.</p>") +
-      "<p><strong>" + esc(data.protectedField) + "</strong> is protected. This can’t be undone.</p>";
+    if (MODE === "additional") {
+      const ok = await confirmModal({
+        title: scope.whole ? "Reprocess the entire submission?" : "Reprocess " + sel.length + " of " + data.lines.length + " lines?",
+        body: "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
+          "</strong> and populates <strong>" + esc(sel.map((l) => l.label).join(", ")) + "</strong>.</p>" +
+          (scope.whole ? "" : "<p>Every other line stays locked.</p>") +
+          "<p><strong>" + esc(data.protectedField) + "</strong> is protected. This can’t be undone.</p>",
+        confirmLabel: scope.whole ? "Reprocess submission" : "Reprocess " + sel.length + " line" + (sel.length === 1 ? "" : "s"),
+        destructive: true
+      });
+      if (!ok) return false;
+      toast("success", "Reprocess started", "Only the lines you chose will populate when it finishes.");
+      return true;
+    }
     const ok = await confirmModal({
-      title: headline,
-      body: body,
-      confirmLabel: scope.whole ? "Reprocess submission" : "Populate " + pop.length + " line" + (pop.length === 1 ? "" : "s"),
-      cancelLabel: "Cancel",
-      destructive: true
+      title: "Process this submission?",
+      body: "<p>Astrus reads the <strong>" + inDocs.length + " attachment" + (inDocs.length === 1 ? "" : "s") +
+        "</strong> and creates <strong>" + esc(sel.map((l) => l.label).join(", ")) + "</strong> on a new submission.</p>" +
+        "<p>A submission number will be assigned when processing completes.</p>",
+      confirmLabel: "Process submission",
+      destructive: false
     });
     if (!ok) return false;
-    toast("success", "Reprocess started", "Only the lines you chose will populate when it finishes.");
+    toast("success", "Submission processing started", "A submission number will be created when the engine finishes.");
     return true;
   }
 
-  /* ---- moment stepper --------------------------------------------------- */
+  /* ---- moment stepper (leading 'Created' status tile + 4 steps) -------- */
   function momentStepper(current, onNav) {
     const bar = document.createElement("div");
     bar.className = "cc-stepper";
     bar.setAttribute("role", "tablist");
-    MOMENTS.forEach((m, i) => {
+    // leading status tile (non-navigable)
+    const s = document.createElement("div");
+    s.className = "cc-step is-done cc-step--status";
+    s.innerHTML = '<span class="cc-step-num">✓</span><span class="cc-step-label">' + (MODE === "additional" ? "Submission" : "Created") + "</span>";
+    bar.appendChild(s);
+    moments().forEach((m, i) => {
       const b = document.createElement("button");
       b.className = "cc-step" + (i === current ? " is-current" : "") + (i < current ? " is-done" : "");
       b.setAttribute("role", "tab");
@@ -257,6 +388,13 @@
 
   /* ---- static Salesforce chrome ---------------------------------------- */
   function sideCardsHTML() {
+    if (MODE !== "additional") {
+      return (
+        '<section class="sf-card side-card"><header><span class="side-ic">📇</span> Activity</header>' +
+        '<div class="sf-card-body side-activity"><div class="side-tabs"><span class="on">Log a Call</span><span>New Task</span><span>Email</span></div>' +
+        '<div class="side-empty">No upcoming activities.</div></div></section>'
+      );
+    }
     return (
       '<section class="sf-card side-card"><header><span class="side-ic">🗂</span> Submission Update Logs (1)</header>' +
       '<div class="sf-card-body side-log">' +
@@ -267,12 +405,15 @@
       '<div class="side-empty">No upcoming activities.</div></div></section>'
     );
   }
-
   function chromeHTML(conceptName) {
     const d = data;
+    const relatedSub = MODE === "additional"
+      ? '<div class="sf-hl"><dt>Related Submission</dt><dd><a>' + esc(d.sub) + "</a></dd></div>"
+      : '<div class="sf-hl"><dt>Related Submission</dt><dd>—</dd></div>';
+    const filesCount = MODE === "additional" ? d.baseFiles.length : 0;
     return (
       '<div class="proto-ribbon"><span>Astrus prototype</span><span class="dot">•</span>' +
-      "<span><strong>" + esc(conceptName) + "</strong></span><span class=\"dot\">•</span>" +
+      "<span><strong>" + esc(conceptName) + " · " + (MODE === "additional" ? "Reprocess" : "New submission") + "</strong></span><span class=\"dot\">•</span>" +
       '<a href="../../index.html">← All concepts</a><span class="dot">•</span>' +
       "<span>Salesforce chrome is a non-clickable mock; only the AI Engine Status card responds.</span></div>" +
       '<div class="sf-globalnav">' +
@@ -295,12 +436,12 @@
       '<div class="sf-record-actions"><button class="slds-btn" tabindex="-1">Edit</button>' +
       '<button class="slds-btn" tabindex="-1">Change Owner</button></div></div>' +
       '<dl class="sf-highlights">' +
-      '<div class="sf-hl"><dt>Related Submission</dt><dd><a>' + esc(d.sub) + "</a></dd></div>" +
+      relatedSub +
       '<div class="sf-hl"><dt>Status</dt><dd><span class="slds-badge badge-success">Success</span></dd></div>' +
       '<div class="sf-hl"><dt>Assigned Underwriter</dt><dd>' + esc(d.underwriter) + "</dd></div>" +
-      '<div class="sf-hl"><dt>Latest Email</dt><dd>' + esc(d.latestEmail) + "</dd></div>" +
-      '<div class="sf-hl"><dt>Files</dt><dd>' + d.files.length + "</dd></div></dl>" +
-      '<div class="sf-subnav"><span class="item active">Details</span><span class="item">Related</span><span class="item">Emails</span></div></div>' +
+      '<div class="sf-hl"><dt>Type</dt><dd>Communication</dd></div>' +
+      '<div class="sf-hl"><dt>Files</dt><dd>' + filesCount + "</dd></div></dl>" +
+      '<div class="sf-subnav"><span class="item active">Details</span><span class="item">Related</span><span class="item">Files</span></div></div>' +
       '<div class="sf-body"><div class="sf-col-left">' +
       '<section class="sf-card"><header><span class="ic">▾</span> Details</header><div class="sf-card-body"><div class="sf-fieldgrid">' +
       '<div class="sf-field"><div class="lbl">From Address</div><div class="val"><a>' + esc(d.from) + "</a></div></div>" +
@@ -308,10 +449,9 @@
       '<div class="sf-field"><div class="lbl">To Address</div><div class="val"><a>' + esc(d.to) + "</a></div></div>" +
       '<div class="sf-field"><div class="lbl">Status</div><div class="val">Success</div></div>' +
       '<div class="sf-field"><div class="lbl">CC Address</div><div class="val">&nbsp;</div></div>' +
-      '<div class="sf-field"><div class="lbl">Matching Message</div><div class="val">Submission processed successfully</div></div>' +
-      '<div class="sf-field"><div class="lbl">BCC Address</div><div class="val">&nbsp;</div></div>' +
-      '<div class="sf-field"><div class="lbl">Type</div><div class="val">Email</div></div>' +
+      '<div class="sf-field"><div class="lbl">Related Submission</div><div class="val">' + (MODE === "additional" ? '<a>' + esc(d.sub) + "</a>" : "&nbsp;") + "</div></div>" +
       '<div class="sf-field full"><div class="lbl">Subject</div><div class="val">' + esc(d.subject) + "</div></div>" +
+      '<div class="sf-field"><div class="lbl">Type</div><div class="val">Communication</div></div>' +
       '<div class="sf-field"><div class="lbl">Message Date</div><div class="val">' + esc(d.messageDate) + "</div></div>" +
       "</div></div></section>" +
       '<section class="sf-card"><header><span class="ic">▾</span> System Information</header><div class="sf-card-body"><div class="sf-fieldgrid">' +
@@ -335,27 +475,40 @@
     if (badgeMount) badgeMount.innerHTML = statusBadge();
     const mount = document.getElementById("cc-body");
     const ctx = {
+      mode: MODE,
       data: data,
-      MOMENTS: MOMENTS,
       esc: esc,
       toast: toast,
       confirmModal: confirmModal,
-      statusBadge: statusBadge,
+      moments: moments,
+      finalLabel: M.finalLabel,
+      finalShort: M.finalShort,
+      offLabel: M.offLabel,
+      verb: M.verb,
       newScope: newScope,
+      alreadyProcessed: alreadyProcessed,
+      sampleFiles: sampleFiles,
+      docsInPlay: docsInPlay,
       includedDocs: includedDocs,
       selectedLines: selectedLines,
       lockedLines: lockedLines,
       selectedCount: selectedCount,
       hasSelection: hasSelection,
-      bellAlertHTML: bellAlertHTML,
-      renderFiles: renderFiles,
+      hasUploads: hasUploads,
+      bannerHTML: bannerHTML,
+      renderUploadStep: renderUploadStep,
+      bindUploadStep: bindUploadStep,
+      renderReview: renderReview,
+      renderFiles: renderReview,
       computeRunSummary: computeRunSummary,
-      runReprocess: runReprocess,
-      momentStepper: momentStepper
+      runProcess: runProcess,
+      runReprocess: runProcess,
+      momentStepper: momentStepper,
+      statusBadge: statusBadge
     };
     concept.render(mount, ctx);
-    document.title = "Astrus Reprocess · " + conceptName;
+    document.title = "Astrus " + (MODE === "additional" ? "Reprocess" : "New Submission") + " · " + conceptName;
   }
 
-  window.ASTRUS = { data: data, MOMENTS: MOMENTS, esc: esc, toast: toast, confirmModal: confirmModal, newScope: newScope, boot: boot };
+  window.ASTRUS = { data: data, mode: MODE, esc: esc, toast: toast, confirmModal: confirmModal, newScope: newScope, boot: boot };
 })();

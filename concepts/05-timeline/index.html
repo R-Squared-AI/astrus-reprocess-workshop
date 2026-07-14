@@ -3,61 +3,52 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Astrus Reprocess · Timeline</title>
+    <title>Astrus · Timeline</title>
     <link rel="stylesheet" href="../../assets/shell.css" />
     <link rel="stylesheet" href="../../assets/cc.css" />
     <style>
-      /* ---- audit-trail rail (Round 3, concept-local) --------------------- */
-      .tl-rail { position: relative; margin-top: 2px; }
-      .tl-node { position: relative; display: flex; gap: 14px; padding-bottom: 20px; }
-      .tl-node:last-child { padding-bottom: 0; }
-      .tl-node::before {
-        content: ""; position: absolute; left: 15px; top: 34px; bottom: -4px; width: 2px;
-        background: #dde3ea;
+      /* ---- vertical timeline rail (concept-local) ------------------------- */
+      .tl-rail { position: relative; max-width: 430px; }
+      .tl-node { position: relative; display: flex; gap: 12px; }
+      .tl-rail-col { flex: none; width: 26px; position: relative; display: flex; justify-content: center; }
+      .tl-rail-col::before {
+        content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+        background: #dde3ea; transform: translateX(-50%); z-index: 0;
       }
-      .tl-node:last-child::before { display: none; }
+      .tl-node:first-child .tl-rail-col::before { top: 13px; }
+      .tl-node:last-child .tl-rail-col::before { bottom: auto; height: 13px; }
       .tl-dot {
-        flex: none; width: 32px; height: 32px; border-radius: 50%; z-index: 1;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 14px; font-weight: 800; color: #fff; box-shadow: 0 0 0 4px #fff;
+        position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 12px; font-weight: 800;
+        background: #fff; border: 2.5px solid #c9cdd3; color: #8a94a0; flex: none;
+        box-shadow: 0 0 0 3px #fff;
       }
-      .tl-node--done .tl-dot { background: #2e844a; }
-      .tl-node--attn .tl-dot { background: #dd7a01; }
-      .tl-dot--now { background: #0176d3; font-size: 17px; animation: tlPulse 1.8s ease-in-out infinite; }
-      @keyframes tlPulse {
-        0%, 100% { box-shadow: 0 0 0 4px #fff, 0 0 0 4px #fff; }
-        50% { box-shadow: 0 0 0 4px #fff, 0 0 0 9px rgba(1, 118, 211, 0.28); }
+      .tl-node--done .tl-dot { background: #2e844a; border-color: #2e844a; color: #fff; }
+      .tl-node--active .tl-dot { background: #0176d3; border-color: #0176d3; color: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #dceafb; }
+      .tl-node--upcoming .tl-dot { background: #fff; border-color: #c9cdd3; color: #8a94a0; }
+      .tl-content { flex: 1; min-width: 0; padding-bottom: 16px; }
+      .tl-node:last-child .tl-content { padding-bottom: 0; }
+      .tl-head {
+        display: flex; align-items: baseline; gap: 8px; width: 100%; background: none; border: none;
+        padding: 2px 0; cursor: pointer; text-align: left; font: inherit; color: inherit;
       }
-      .tl-content { flex: 1; min-width: 0; padding-top: 5px; }
-      .tl-title { font-weight: 700; font-size: 13.5px; }
-      .tl-meta { font-size: 11.5px; color: var(--sf-text-weaker); margin-top: 2px; }
-      .tl-meta em { font-style: normal; font-weight: 600; color: var(--sf-text-weak); }
-      .tl-node--done .tl-title { color: #0a3d1c; }
-      .tl-node--attn .tl-title { color: #7a4300; }
-      /* the NOW node holds the control — set it apart */
-      .tl-node--now .tl-content {
-        background: #eef4fb; border: 1.5px solid #b6d8f7; border-radius: 10px;
-        padding: 12px 14px 16px; margin-top: 1px;
+      .tl-head-title { font-weight: 700; font-size: 13.5px; color: var(--sf-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tl-head-summary { font-size: 11.5px; color: var(--sf-text-weaker); flex: none; margin-left: auto; padding-left: 8px; }
+      .tl-node--done .tl-head-title { color: #0a3d1c; }
+      .tl-node--active .tl-head-title { color: #014486; font-size: 14.5px; }
+      .tl-node--upcoming .tl-head-title { color: #8a94a0; font-weight: 600; }
+      .tl-node--hist .tl-head { cursor: default; }
+      .tl-head:hover .tl-head-title { text-decoration: underline; }
+      .tl-node--hist .tl-head:hover .tl-head-title,
+      .tl-node--upcoming .tl-head:hover .tl-head-title { text-decoration: none; }
+      .tl-node--upcoming .tl-head:hover .tl-head-title { color: #0176d3; }
+      .tl-body {
+        margin-top: 9px; border: 1.5px solid #b6d8f7; background: #f7fbff; border-radius: 10px;
+        padding: 12px 14px 14px;
       }
-      .tl-node--now .tl-title { color: #014486; font-size: 14.5px; letter-spacing: 0.01em; }
-      .tl-node--now .cc-title-row { margin: 14px 0 8px; }
-      .tl-node--now .cc-title-row:first-of-type { margin-top: 10px; }
-      .tl-node--now .cc-section-title { margin: 0; font-size: 13px; }
-      .tl-step-num {
-        display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
-        border-radius: 50%; background: var(--sf-brand); color: #fff; font-size: 9.5px; font-weight: 800;
-        margin-right: 6px; flex: none;
-      }
-
-      /* checkbox control for line rows (shape only lives here, per concept) */
-      .ck-check {
-        width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--sf-border-strong);
-        background: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-        color: #fff; font-size: 14px; font-weight: 700; flex: none; padding: 0; transition: all 0.12s ease;
-      }
-      .ck-check:hover { border-color: #2e844a; }
-      .lock-ic { font-size: 11px; }
-      .line-sub-tag { white-space: nowrap; }
+      .tl-node--done-final .tl-dot { background: #2e844a; border-color: #2e844a; color: #fff; }
+      .tl-node--done-final .tl-head-title { color: #0a3d1c; }
+      .tl-reset-link { background: none; border: none; color: var(--sf-brand); font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; font-size: 12px; margin-top: 2px; }
     </style>
   </head>
   <body>
@@ -65,8 +56,15 @@
     <script src="../../assets/shell.js"></script>
     <script>
       (function () {
-        const state = { scope: ASTRUS.newScope(), populated: [] };
+        const state = { moment: 0, scope: null, runs: [] };
         let CTX, MOUNT;
+
+        const NODE_TITLES = ["Upload attachments", "Review attachments", "Choose lines", ""];
+        function nowTitle() { return "NOW — " + CTX.finalLabel; }
+
+        function statusTitle() {
+          return CTX.mode === "additional" ? "Submission created · " + CTX.data.sub : "Communication created";
+        }
 
         function countChip() {
           const n = CTX.selectedCount(state.scope);
@@ -86,72 +84,94 @@
         function lineRow(l) {
           const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
           if (state.scope.whole) {
-            return '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + CTX.esc(l.label) + tag + '</span><span class="line-state">Will populate ✓</span></div>';
+            return '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + CTX.esc(l.label) + tag + '</span><span class="line-state">Will ' + CTX.verb.toLowerCase() + " ✓</span></div>";
           }
           const on = state.scope.lob.has(l.id);
           return (
             '<div class="line-row ' + (on ? "on" : "locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
             '<button class="ck-check' + (on ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + on + '">' + (on ? "✓" : "") + "</button>" +
             '<span class="line-name">' + CTX.esc(l.label) + tag + "</span>" +
-            '<span class="line-state">' + (on ? "Will populate" : '<span class="lock-ic">🔒</span> Locked') + "</span></div>"
+            '<span class="line-state">' + (on ? "Will " + CTX.verb.toLowerCase() : CTX.offLabel) + "</span></div>"
           );
         }
 
-        /* ---- node 1 — closed history, terse ----------------------------- */
-        function nodeReceived() {
-          const e = CTX.data.engine;
+        /* ---- collapsed summary text for a done node -------------------- */
+        function summaryFor(i) {
+          if (i === 0) {
+            const n = state.scope.uploaded.length;
+            return n ? n + (n === 1 ? " file" : " files") + " uploaded" : "no new files";
+          }
+          if (i === 1) {
+            return CTX.includedDocs(state.scope).length + " of " + CTX.docsInPlay(state.scope).length + " included";
+          }
+          if (i === 2) {
+            return state.scope.whole ? "Entire submission" : CTX.selectedCount(state.scope) + " of " + CTX.data.lines.length + " lines";
+          }
+          return "";
+        }
+
+        /* ---- action bar --------------------------------------------------- */
+        function actions(backIdx, backLabel, forwardHtml) {
           return (
-            '<div class="tl-node tl-node--done"><div class="tl-dot">✓</div>' +
-            '<div class="tl-content"><div class="tl-title">Submission received &amp; processed</div>' +
-            '<div class="tl-meta">Extracted <em>' + CTX.esc(e.filesExt) + "</em> · Completed " + CTX.esc(e.completed) + "</div></div></div>"
-          );
-        }
-        /* ---- node 2 — the amber trigger, terse (docs live in the NOW node) */
-        function nodeAttachment() {
-          const f = CTX.data.followup;
-          return (
-            '<div class="tl-node tl-node--attn"><div class="tl-dot">🔔</div>' +
-            '<div class="tl-content"><div class="tl-title">New attachment linked — not reprocessed</div>' +
-            '<div class="tl-meta"><em>' + CTX.esc(f.file) + "</em> · " + CTX.esc(f.when) + "</div></div></div>"
+            '<div class="cc-actions">' +
+            (backIdx != null ? '<button class="slds-btn" data-go="' + backIdx + '">' + backLabel + "</button>" : "") +
+            '<span class="spacer"></span>' + forwardHtml + "</div>"
           );
         }
 
-        /* ---- appended nodes after a successful reprocess ---------------- */
-        function nodesPopulated() {
-          return state.populated
-            .map(
-              (p) =>
-                '<div class="tl-node tl-node--done"><div class="tl-dot">✓</div>' +
-                '<div class="tl-content"><div class="tl-title">Populated: ' + CTX.esc(p.labels) + "</div>" +
-                '<div class="tl-meta">' + CTX.esc(p.when) + "</div></div></div>"
-            )
-            .join("");
+        /* ---- body content per active node -------------------------------- */
+        function bodyUpload() {
+          return CTX.renderUploadStep(state.scope) + actions(null, "", '<button class="slds-btn slds-btn--brand" data-go="1">Next: review →</button>');
         }
-
-        /* ---- node 3 — NOW, holds the control, always last: docs, then lines */
-        function nodeNow() {
+        function bodyReview() {
+          return CTX.renderReview(state.scope) + actions(0, "← Upload", '<button class="slds-btn slds-btn--brand" data-go="2">Next: lines →</button>');
+        }
+        function bodyLines() {
           const rows = CTX.data.lines.map(lineRow).join("");
-          const hasSel = CTX.hasSelection(state.scope);
           return (
-            '<div class="tl-node tl-node--now"><div class="tl-dot tl-dot--now">●</div>' +
-            '<div class="tl-content"><div class="tl-title">NOW — you decide</div>' +
-
-            '<div class="cc-title-row"><p class="cc-section-title"><span class="tl-step-num">1</span>Which documents?</p></div>' +
-            CTX.renderFiles(state.scope) +
-
-            '<div class="cc-title-row"><p class="cc-section-title"><span class="tl-step-num">2</span>Which lines?</p>' + countChip() + "</div>" +
+            '<div class="cc-title-row"><span></span>' + countChip() + "</div>" +
             '<div class="cc-mode">' +
             '<div class="cc-mode-opt' + (!state.scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span><div class="cc-mode-title">Only chosen lines</div></div>' +
             '<div class="cc-mode-opt' + (state.scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span><div class="cc-mode-title">Entire submission (' + CTX.data.lines.length + ")</div></div>" +
             "</div>" +
             '<div class="line-list">' + rows + "</div>" +
+            actions(1, "← Review", '<button class="slds-btn slds-btn--brand" data-go="3">Next →</button>')
+          );
+        }
+        function bodyNow() {
+          return (
             runSummaryHTML() +
+            actions(2, "← Lines", '<button class="slds-btn slds-btn--brand" data-run' + (!CTX.hasSelection(state.scope) || !CTX.hasUploads(state.scope) ? " disabled" : "") + ">" + CTX.esc(CTX.finalLabel) + "</button>")
+          );
+        }
+        const BODIES = [bodyUpload, bodyReview, bodyLines, bodyNow];
 
-            '<div class="cc-actions">' +
-            '<button class="slds-btn" data-processnew>Process as New</button>' +
-            '<span class="spacer"></span>' +
-            '<button class="slds-btn slds-btn--brand" data-reprocess' + (!hasSel ? " disabled" : "") + ">Reprocess</button>" +
-            "</div></div></div>"
+        /* ---- one active-cycle node (0..3) --------------------------------- */
+        function cycleNode(i) {
+          const isActive = i === state.moment;
+          const isDone = i < state.moment;
+          const cls = isActive ? "tl-node--active" : isDone ? "tl-node--done" : "tl-node--upcoming";
+          const title = i === 3 ? nowTitle() : NODE_TITLES[i];
+          const dot = isDone ? "✓" : String(i + 1);
+          const summary = isDone && !isActive ? '<span class="tl-head-summary">' + summaryFor(i) + "</span>" : "";
+          const body = isActive ? '<div class="tl-body">' + BODIES[i]() + "</div>" : "";
+          return (
+            '<div class="tl-node ' + cls + '"><div class="tl-rail-col"><div class="tl-dot">' + dot + "</div></div>" +
+            '<div class="tl-content"><button class="tl-head" data-node="' + i + '"><span class="tl-head-title">' + CTX.esc(title) + "</span>" + summary + "</button>" + body + "</div></div>"
+          );
+        }
+
+        function statusNode() {
+          return (
+            '<div class="tl-node tl-node--done tl-node--hist"><div class="tl-rail-col"><div class="tl-dot">✓</div></div>' +
+            '<div class="tl-content"><button class="tl-head" disabled><span class="tl-head-title">' + CTX.esc(statusTitle()) + "</span></button></div></div>"
+          );
+        }
+
+        function runNode(r) {
+          return (
+            '<div class="tl-node tl-node--done-final tl-node--hist"><div class="tl-rail-col"><div class="tl-dot">✓</div></div>' +
+            '<div class="tl-content"><button class="tl-head" disabled><span class="tl-head-title">Done — ' + CTX.esc(r.label) + "</span><span class=\"tl-head-summary\">" + CTX.esc(r.when) + "</span></button></div></div>"
           );
         }
 
@@ -159,12 +179,23 @@
           MOUNT.innerHTML = "";
           const rail = document.createElement("div");
           rail.className = "tl-rail";
-          rail.innerHTML = nodeReceived() + nodeAttachment() + nodesPopulated() + nodeNow();
+          rail.innerHTML =
+            statusNode() +
+            state.runs.map(runNode).join("") +
+            [0, 1, 2, 3].map(cycleNode).join("");
           MOUNT.appendChild(rail);
           bind(rail);
+          if (state.moment === 0) CTX.bindUploadStep(rail, state.scope, render);
         }
 
+        function go(i) { state.moment = i; render(); }
+
         function bind(rail) {
+          rail.querySelectorAll("[data-node]").forEach((b) => {
+            if (b.disabled) return;
+            b.onclick = () => go(Number(b.dataset.node));
+          });
+          rail.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(Number(b.dataset.go))));
           rail.querySelectorAll(".doc-toggle").forEach((b) => (b.onclick = () => {
             const n = b.dataset.doc;
             state.scope.excludedDocs.has(n) ? state.scope.excludedDocs.delete(n) : state.scope.excludedDocs.add(n);
@@ -176,31 +207,27 @@
             state.scope.lob.has(id) ? state.scope.lob.delete(id) : state.scope.lob.add(id);
             render();
           }));
-          const rp = rail.querySelector("[data-reprocess]");
+          const rp = rail.querySelector("[data-run]");
           if (rp) rp.onclick = async () => {
-            const pop = CTX.selectedLines(state.scope);
-            const ok = await CTX.runReprocess(state.scope);
+            const sel = CTX.selectedLines(state.scope);
+            const ok = await CTX.runProcess(state.scope);
             if (ok) {
-              state.populated.push({ labels: pop.map((l) => l.label).join(", "), when: "Just now" });
-              state.scope = ASTRUS.newScope();
+              state.runs.push({ label: CTX.finalLabel + ": " + (state.scope.whole ? "entire submission" : sel.map((l) => l.label).join(", ")), when: "Just now" });
+              state.scope = CTX.newScope();
+              state.moment = 0;
               render();
             }
-          };
-          const pn = rail.querySelector("[data-processnew]");
-          if (pn) pn.onclick = async () => {
-            const ok = await CTX.confirmModal({
-              title: "Process as a new submission?",
-              body: "<p>Ignores your scope and rebuilds everything as a fresh submission.</p>",
-              confirmLabel: "Process as New",
-              destructive: true
-            });
-            if (ok) CTX.toast("success", "Process as New started", "A new submission was sent to the engine.");
           };
         }
 
         window.CONCEPT = {
           name: "Timeline",
-          render: function (mount, ctx) { MOUNT = mount; CTX = ctx; render(); }
+          render: function (mount, ctx) {
+            MOUNT = mount;
+            CTX = ctx;
+            state.scope = ctx.newScope();
+            render();
+          }
         };
         ASTRUS.boot(window.CONCEPT);
       })();

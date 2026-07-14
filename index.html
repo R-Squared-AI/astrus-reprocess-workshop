@@ -9,45 +9,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --ink: #0c1826;
-        --ink-3: #6b7c90;
-        --paper: #f6f8fb;
-        --line: #e2e8f0;
-        --blue: #0176d3;
-        --blue-2: #1b96ff;
-        --blue-dk: #014486;
-        --mono: "IBM Plex Mono", ui-monospace, monospace;
-        --disp: "Space Grotesk", system-ui, sans-serif;
-        --body: "Inter", system-ui, sans-serif;
+        --ink: #0c1826; --ink-3: #6b7c90; --paper: #f6f8fb; --line: #e2e8f0;
+        --blue: #0176d3; --blue-2: #1b96ff; --blue-dk: #014486; --green: #1f7a3f;
+        --mono: "IBM Plex Mono", ui-monospace, monospace; --disp: "Space Grotesk", system-ui, sans-serif; --body: "Inter", system-ui, sans-serif;
       }
       * { box-sizing: border-box; }
       body { margin: 0; font-family: var(--body); color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; }
       .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-
       .brand { display: flex; align-items: center; gap: 8px; padding: 22px 24px; max-width: 1100px; margin: 0 auto; font-family: var(--disp); font-weight: 700; font-size: 15px; }
       .brand .bolt { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, var(--blue), var(--blue-2)); color: #fff; display: grid; place-items: center; font-size: 13px; }
-
-      h1 { font-family: var(--disp); font-weight: 700; font-size: clamp(38px, 6.6vw, 76px); line-height: 1.0; letter-spacing: -0.025em; margin: 34px 0 46px; max-width: 16ch; }
-
+      h1 { font-family: var(--disp); font-weight: 700; font-size: clamp(38px, 6.6vw, 76px); line-height: 1.0; letter-spacing: -0.025em; margin: 30px 0 14px; max-width: 16ch; }
+      .sub { font-family: var(--body); font-size: 15px; color: var(--ink-3); margin: 0 0 42px; max-width: 60ch; }
+      .sub b { color: var(--ink); font-weight: 600; }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding-bottom: 70px; }
-      .card {
-        border: 1px solid var(--line); border-radius: 16px; background: #fff;
-        padding: 26px 24px 24px; display: flex; flex-direction: column; gap: 12px;
-        text-decoration: none; color: inherit; transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-      }
-      .card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px -20px rgba(9,30,66,0.45); border-color: var(--blue-2); }
-      .card:focus-visible { outline: 3px solid var(--blue-2); outline-offset: 2px; }
+      .card { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 24px 24px 22px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow 0.16s ease, border-color 0.16s ease; }
+      .card:hover { box-shadow: 0 16px 34px -22px rgba(9,30,66,0.4); border-color: #cfd9e6; }
       .serial { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; color: var(--ink-3); }
-      .name { font-family: var(--disp); font-weight: 700; font-size: 27px; letter-spacing: -0.02em; line-height: 1.05; }
-      .btn {
-        margin-top: 8px; align-self: flex-start;
-        font-family: var(--body); font-weight: 700; font-size: 14px;
-        background: var(--blue); color: #fff; border: none; border-radius: 10px;
-        padding: 12px 22px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-        box-shadow: 0 6px 16px -8px rgba(1,118,211,0.9); transition: background 0.14s ease, gap 0.14s ease, transform 0.1s ease;
-      }
-      .card:hover .btn { background: var(--blue-dk); gap: 12px; }
-      .card:active .btn { transform: translateY(1px); }
+      .name { font-family: var(--disp); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; line-height: 1.05; }
+      .btns { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+      .btn { font-family: var(--body); font-weight: 700; font-size: 13px; border-radius: 10px; padding: 11px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; transition: background 0.14s ease, gap 0.14s ease, transform 0.1s ease, border-color 0.14s; }
+      .btn-p { background: var(--blue); color: #fff; border: 1.5px solid var(--blue); box-shadow: 0 6px 16px -9px rgba(1,118,211,0.9); }
+      .btn-p:hover { background: var(--blue-dk); border-color: var(--blue-dk); gap: 11px; }
+      .btn-s { background: #fff; color: var(--green); border: 1.5px solid #9cd6ad; }
+      .btn-s:hover { background: #eefaf1; border-color: var(--green); gap: 11px; }
+      .btn:active { transform: translateY(1px); }
       @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     </style>
   </head>
@@ -55,38 +40,29 @@
     <div class="brand"><span class="bolt">⚡</span> Astrus Design Workshop</div>
     <div class="wrap">
       <h1>Underwriter-Controlled Reprocessing</h1>
-      <div class="grid">
-        <a class="card" href="concepts/01-checklist/index.html">
-          <span class="serial">RPX-022689-01</span>
-          <span class="name">Checklist</span>
-          <span class="btn">Open concept →</span>
-        </a>
-        <a class="card" href="concepts/02-coverage-tiles/index.html">
-          <span class="serial">RPX-022689-02</span>
-          <span class="name">Coverage Tiles</span>
-          <span class="btn">Open concept →</span>
-        </a>
-        <a class="card" href="concepts/03-attachment-driven/index.html">
-          <span class="serial">RPX-022689-03</span>
-          <span class="name">Attachment-Driven</span>
-          <span class="btn">Open concept →</span>
-        </a>
-        <a class="card" href="concepts/04-command-bar/index.html">
-          <span class="serial">RPX-022689-04</span>
-          <span class="name">Command Bar</span>
-          <span class="btn">Open concept →</span>
-        </a>
-        <a class="card" href="concepts/05-timeline/index.html">
-          <span class="serial">RPX-022689-05</span>
-          <span class="name">Timeline</span>
-          <span class="btn">Open concept →</span>
-        </a>
-        <a class="card" href="concepts/06-split-board/index.html">
-          <span class="serial">RPX-022689-06</span>
-          <span class="name">Split Board</span>
-          <span class="btn">Open concept →</span>
-        </a>
-      </div>
+      <p class="sub">Six concepts for the AI Engine Status card. Each runs two ways — <b>New submission</b> (drop attachments → process) and <b>Reprocess</b> (a submission exists → upload more → reprocess).</p>
+      <div class="grid" id="grid"></div>
     </div>
+    <script>
+      var C = [
+        ["01", "Checklist", "01-checklist"],
+        ["02", "Coverage Tiles", "02-coverage-tiles"],
+        ["03", "Attachment-Driven", "03-attachment-driven"],
+        ["04", "Command Bar", "04-command-bar"],
+        ["05", "Timeline", "05-timeline"],
+        ["06", "Split Board", "06-split-board"]
+      ];
+      document.getElementById("grid").innerHTML = C.map(function (c) {
+        var base = "concepts/" + c[2] + "/index.html";
+        return (
+          '<div class="card"><span class="serial">RPX-022689-' + c[0] + '</span>' +
+          '<span class="name">' + c[1] + '</span>' +
+          '<div class="btns">' +
+          '<a class="btn btn-p" href="' + base + '?mode=initial">New submission →</a>' +
+          '<a class="btn btn-s" href="' + base + '?mode=additional">Reprocess →</a>' +
+          "</div></div>"
+        );
+      }).join("");
+    </script>
   </body>
 </html>
