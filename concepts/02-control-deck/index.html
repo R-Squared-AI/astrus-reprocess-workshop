@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astrus Reprocess · Control Deck</title>
+    <link rel="stylesheet" href="../../assets/shell.css" />
+    <link rel="stylesheet" href="../../assets/cc.css" />
+    <style>
+      /* ---- Concept 02: Control Deck (per-LOB breaker-panel toggles) ---- */
+      .cd-warning {
+        background: var(--sf-warn-bg);
+        border: 1px solid var(--sf-warn-border);
+        border-left: 4px solid var(--sf-warn);
+        border-radius: var(--sf-radius);
+        padding: 11px 14px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+
+      /* the deck itself: a stacked panel of control cards */
+      .cd-deck {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        background: linear-gradient(180deg, #eef0f3, #e6e9ee);
+        border: 1px solid var(--sf-border-strong);
+        border-radius: var(--sf-radius-lg);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      .cd-card {
+        display: flex;
+        align-items: stretch;
+        gap: 14px;
+        background: #fff;
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        padding: 12px 14px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        position: relative;
+        transition: box-shadow 0.12s ease, border-color 0.12s ease;
+      }
+      .cd-card.is-changed {
+        background: #f4fbf6;
+        border-color: var(--sf-success-border);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 3px 0 0 var(--sf-success);
+      }
+      .cd-card.is-on {
+        border-color: var(--sf-brand-accent);
+        box-shadow: 0 2px 6px rgba(1, 118, 211, 0.14);
+      }
+
+      .cd-num {
+        flex: none;
+        width: 22px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 2px;
+        font-size: 10.5px;
+        font-weight: 700;
+        color: var(--sf-text-weaker);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .cd-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        justify-content: center;
+      }
+      .cd-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .cd-name {
+        font-weight: 700;
+        font-size: 13.5px;
+        color: var(--sf-text);
+      }
+      .cd-badge {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--sf-success);
+        background: var(--sf-success-bg);
+        border: 1px solid var(--sf-success-border);
+        padding: 1px 7px;
+        border-radius: 9px;
+      }
+      .cd-ctx {
+        font-size: 11.5px;
+        color: var(--sf-text-weaker);
+      }
+      .cd-chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+      }
+      .cd-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 14px;
+        border: 1px solid var(--sf-border-strong);
+        background: #fafbfc;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--sf-text-weak);
+        cursor: default;
+      }
+
+      /* divider between the LOB info and the control rail */
+      .cd-divider {
+        flex: none;
+        width: 1px;
+        background: linear-gradient(180deg, transparent, #e3e6ea 15%, #e3e6ea 85%, transparent);
+        margin: 2px 0;
+      }
+
+      .cd-controls {
+        flex: none;
+        width: 268px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+      }
+      .cd-toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .cd-toggle-row--primary .cd-toggle-label {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--sf-text);
+      }
+      .cd-toggle-row--secondary {
+        padding-left: 10px;
+        opacity: 0.88;
+      }
+      .cd-toggle-row--secondary .cd-toggle-label {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--sf-text-weaker);
+      }
+
+      /* make the physical switch feel tactile: a subtle track groove + press */
+      .cd-controls .sw {
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+      }
+      .cd-controls .sw:active::after {
+        width: calc(var(--h) - 2px);
+      }
+      .cd-controls .sw:hover {
+        background: #b7bcc4;
+      }
+      .cd-controls .sw.on:hover {
+        background: var(--sf-brand-dark);
+      }
+      .cd-controls .sw:focus-visible {
+        outline: 2px solid var(--sf-brand-accent);
+        outline-offset: 2px;
+      }
+
+      .cd-note {
+        font-size: 10.5px;
+        line-height: 1.5;
+        color: var(--sf-brand-dark);
+        background: #eef4fb;
+        border: 1px solid #c9def5;
+        border-radius: var(--sf-radius);
+        padding: 5px 9px;
+        margin: 0 0 0 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This interactive concept needs JavaScript.</noscript>
+    <script src="../../assets/shell.js"></script>
+    <script>
+      (function () {
+        const state = {
+          moment: 0,
+          scope: { lob: new Set(), quote: new Set(), removed: new Set() }
+        };
+        const _hm = location.hash.match(/m(\d)/);
+        if (_hm) state.moment = Number(_hm[1]);
+        let CTX;
+
+        function badge() {
+          const m = document.querySelector(".cc-badge-mount");
+          if (m)
+            m.innerHTML =
+              '<span class="slds-badge badge-warning">Requires Review</span>';
+        }
+
+        function statusStrip() {
+          const e = CTX.data.engine;
+          return (
+            '<dl class="cc-status">' +
+            "<dt>Status</dt><dd><span class=\"slds-badge badge-warning\">" +
+            e.status +
+            "</span></dd>" +
+            "<dt>Stage</dt><dd>" +
+            e.stage +
+            "</dd>" +
+            "<dt>Files</dt><dd>Preprocessed: " +
+            e.filesPrep +
+            " | Extracted: " +
+            e.filesExt +
+            "</dd>" +
+            "<dt>Completed</dt><dd>" +
+            e.completed +
+            "</dd>" +
+            "</dl>"
+          );
+        }
+
+        function runSummaryHTML() {
+          const r = CTX.computeRunSummary(state.scope);
+          const empty = r.selectedCount === 0 && state.scope.quote.size === 0;
+          const lines = r.lines
+            .map(
+              (l) =>
+                '<div class="run-line run-line--' +
+                l.kind +
+                '"><span class="rl-ic">' +
+                (l.kind === "update" ? "↻" : l.kind === "lock" ? "🔒" : "✓") +
+                "</span><span>" +
+                CTX.esc(l.text) +
+                "</span></div>"
+            )
+            .join("");
+          return (
+            '<div class="run-summary' +
+            (empty ? " is-empty" : "") +
+            '"><p class="run-summary-title">' +
+            (empty ? "Nothing selected yet" : "✓ What this run will do") +
+            " — " +
+            r.selectedCount +
+            " of " +
+            r.total +
+            " lines" +
+            "</p>" +
+            (empty
+              ? '<p class="cc-hint" style="margin:0">All lines are off. Turn on a line below to see exactly what a reprocess would change.</p>'
+              : lines) +
+            "</div>"
+          );
+        }
+
+        function render() {
+          badge();
+          const mount = document.getElementById("cc-body");
+          mount.innerHTML = statusStrip();
+          mount.appendChild(CTX.momentStepper(state.moment, go));
+
+          const box = document.createElement("div");
+          if (state.moment === 0) box.innerHTML = momentArrival();
+          else if (state.moment === 1) box.innerHTML = momentFiles();
+          else if (state.moment === 2) box.innerHTML = momentScope();
+          else box.innerHTML = momentRun();
+          mount.appendChild(box);
+          bind(box);
+        }
+
+        function momentArrival() {
+          return (
+            CTX.bellAlertHTML() +
+            '<div class="cc-actions"><button class="slds-btn slds-btn--brand" data-go="1">Review the files →</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-reprocess-now>Skip to reprocess</button></div>' +
+            '<p class="cc-hint">A follow-up email used to silently re-run the engine and overwrite your work. Now it just rings this bell — you decide what happens next.</p>'
+          );
+        }
+
+        function momentFiles() {
+          return (
+            '<p class="cc-section-title">Square up the files</p>' +
+            '<p class="cc-section-sub">The engine reprocesses the <strong>full set of files shown here</strong>. Remove anything superseded, add anything missing — then move on to scope.</p>' +
+            CTX.renderFiles(state.scope) +
+            '<div class="cc-actions"><button class="slds-btn" data-go="0">← Back</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="2">Files look right → scope it</button></div>'
+          );
+        }
+
+        function deckCardHTML(l, i) {
+          const lobOn = state.scope.lob.has(l.id);
+          const qOn = state.scope.quote.has(l.id);
+          const num = String(i + 1).padStart(2, "0");
+          return (
+            '<div class="cd-card' +
+            (l.changed ? " is-changed" : "") +
+            (lobOn ? " is-on" : "") +
+            '">' +
+            '<div class="cd-num">' +
+            num +
+            "</div>" +
+            '<div class="cd-main">' +
+            '<div class="cd-top"><span class="cd-name">' +
+            CTX.esc(l.label) +
+            "</span>" +
+            (l.changed ? '<span class="cd-badge">New documents</span>' : "") +
+            "</div>" +
+            '<div class="cd-ctx">' +
+            CTX.esc(l.ctx) +
+            "</div>" +
+            '<div class="cd-chips">' +
+            '<span class="cd-chip">📊 ' +
+            CTX.esc(l.exposure) +
+            "</span>" +
+            '<span class="cd-chip">📁 ' +
+            CTX.esc(l.loss) +
+            "</span>" +
+            "</div>" +
+            (lobOn
+              ? '<p class="cd-note">Will refresh exposures, schedules, rates &amp; loss history from this Communication’s files.</p>'
+              : "") +
+            "</div>" +
+            '<div class="cd-divider"></div>' +
+            '<div class="cd-controls">' +
+            '<div class="cd-toggle-row cd-toggle-row--primary">' +
+            '<button class="sw' +
+            (lobOn ? " on" : "") +
+            '" data-lob="' +
+            l.id +
+            '" aria-pressed="' +
+            lobOn +
+            '" aria-label="Update ' +
+            CTX.esc(l.label) +
+            '"></button>' +
+            '<span class="cd-toggle-label">Update this line</span>' +
+            "</div>" +
+            '<div class="cd-toggle-row cd-toggle-row--secondary">' +
+            '<button class="sw' +
+            (qOn ? " on" : "") +
+            '" style="--w:32px;--h:18px" data-quote="' +
+            l.id +
+            '" aria-pressed="' +
+            qOn +
+            '" aria-label="Update ' +
+            CTX.esc(l.label) +
+            ' quote"></button>' +
+            '<span class="cd-toggle-label">Update program design (LOB Quote)</span>' +
+            "</div>" +
+            "</div>" +
+            "</div>"
+          );
+        }
+
+        function momentScope() {
+          const cards = CTX.data.lobs.map(deckCardHTML).join("");
+          return (
+            '<p class="cc-section-title">Control Deck — choose what this run may update</p>' +
+            '<p class="cc-section-sub">Every line ships off. Flip a switch to arm it for reprocess; the LOB Quote toggle beneath is a separate, subordinate control for program design.</p>' +
+            '<div class="cd-warning">⚠️ Reprocessing re-reads every file on this Communication, but Salesforce only writes the lines whose switch is <strong>on</strong>. Every other line — and all its exposures, schedules, rates and loss history — is <strong>not touched</strong>.</div>' +
+            '<div class="cd-deck">' +
+            cards +
+            "</div>" +
+            runSummaryHTML() +
+            '<div class="cc-actions"><button class="slds-btn" data-go="1">← Back to files</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="3">Review &amp; reprocess →</button></div>'
+          );
+        }
+
+        function momentRun() {
+          const sel = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id));
+          return (
+            '<p class="cc-section-title">Ready to reprocess</p>' +
+            runSummaryHTML() +
+            '<div class="cc-alert cc-alert--lock" style="margin-top:14px"><div class="cc-alert-ic">🔒</div><div><strong>' +
+            CTX.esc(CTX.data.protectedField) +
+            "</strong> is never overwritten by a reprocess. Astrus fills it once as an early estimate; after that it's yours. (Managed as an admin-editable exclusion list — more fields can be added later without a code change.)</div></div>" +
+            '<div class="cc-actions">' +
+            '<button class="slds-btn slds-btn--brand" data-reprocess ' +
+            (sel.length === 0 && state.scope.quote.size === 0 ? "disabled" : "") +
+            ">Reprocess" +
+            (sel.length ? " " + sel.length + " line" + (sel.length === 1 ? "" : "s") : "") +
+            "</button>" +
+            '<button class="slds-btn" data-processnew>Process as New</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-go="2">← Adjust scope</button></div>' +
+            '<p class="cc-hint"><strong>Reprocess</strong> runs against the scope above. <strong>Process as New</strong> ignores scope and rebuilds everything from scratch (first-time behavior).</p>'
+          );
+        }
+
+        function go(i) {
+          state.moment = i;
+          render();
+        }
+
+        function bind(box) {
+          box.querySelectorAll("[data-go]").forEach(function (b) {
+            b.onclick = () => go(Number(b.dataset.go));
+          });
+          box.querySelectorAll(".file-remove").forEach(function (b) {
+            b.onclick = function () {
+              state.scope.removed.add(b.dataset.file);
+              CTX.toast(
+                "success",
+                "Removed from record",
+                b.dataset.file + " was unlinked from this Communication. The file still exists in Salesforce."
+              );
+              render();
+            };
+          });
+          box.querySelectorAll("[data-lob]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.lob;
+              state.scope.lob.has(id)
+                ? state.scope.lob.delete(id)
+                : state.scope.lob.add(id);
+              render();
+            };
+          });
+          box.querySelectorAll("[data-quote]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.quote;
+              state.scope.quote.has(id)
+                ? state.scope.quote.delete(id)
+                : state.scope.quote.add(id);
+              render();
+            };
+          });
+          const rn = box.querySelector("[data-reprocess-now]");
+          if (rn) rn.onclick = () => go(2);
+          const rp = box.querySelector("[data-reprocess]");
+          if (rp)
+            rp.onclick = async function () {
+              const ok = await CTX.runReprocess(state.scope);
+              if (ok) {
+                state.scope = { lob: new Set(), quote: new Set(), removed: state.scope.removed };
+                state.moment = 0;
+                render();
+              }
+            };
+          const pn = box.querySelector("[data-processnew]");
+          if (pn)
+            pn.onclick = async function () {
+              const ok = await CTX.confirmModal({
+                title: "Process as a new submission?",
+                body:
+                  "<p>This ignores your scope selections and rebuilds <strong>everything</strong> from the current files — a fresh, potentially duplicate submission. Use this only for a genuinely new deal.</p>",
+                confirmLabel: "Process as New",
+                destructive: true
+              });
+              if (ok)
+                CTX.toast(
+                  "success",
+                  "Process as New initiated",
+                  "A new submission has been sent to the AI engine."
+                );
+            };
+        }
+
+        window.CONCEPT = {
+          name: "Control Deck",
+          render: function (mount, ctx) {
+            CTX = ctx;
+            render();
+          }
+        };
+        ASTRUS.boot(window.CONCEPT);
+      })();
+    </script>
+  </body>
+</html>

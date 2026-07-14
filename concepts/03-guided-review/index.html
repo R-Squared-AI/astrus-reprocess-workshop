@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astrus Reprocess · Guided Review</title>
+    <link rel="stylesheet" href="../../assets/shell.css" />
+    <link rel="stylesheet" href="../../assets/cc.css" />
+    <style>
+      /* ---- Concept 03: Guided Review (explicit diff / preview before commit) ---- */
+      .gr-warning {
+        background: var(--sf-warn-bg);
+        border: 1px solid var(--sf-warn-border);
+        border-left: 4px solid var(--sf-warn);
+        border-radius: var(--sf-radius);
+        padding: 11px 14px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+
+      .gr-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+        gap: 18px;
+        align-items: start;
+      }
+      @media (max-width: 700px) {
+        .gr-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* left: quiet list of LOB rows */
+      .gr-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .gr-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px;
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        background: #fff;
+        transition: border-color 0.12s ease, background 0.12s ease;
+      }
+      .gr-row:hover {
+        border-color: var(--sf-brand-accent);
+      }
+      .gr-row--flag {
+        background: #f8fbff;
+        border-color: #cfe3f8;
+      }
+      .gr-row .sw {
+        margin-top: 1px;
+      }
+      .gr-row-main {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+      .gr-row-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .gr-row-name {
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .gr-newflag {
+        display: inline-block;
+        font-size: 9.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--sf-brand-dark);
+        background: #eef4fb;
+        border: 1px solid #cfe3f8;
+        padding: 1px 7px;
+        border-radius: 9px;
+      }
+      .gr-row-ctx {
+        font-size: 11.5px;
+        color: var(--sf-text-weaker);
+        line-height: 1.4;
+      }
+      .gr-quote-chip {
+        margin-top: 6px;
+        align-self: flex-start;
+        padding: 3px 10px;
+        font-size: 11px;
+      }
+
+      /* right: the star — live diff / preview panel */
+      .gr-preview {
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius-lg);
+        background: #fbfcfe;
+        padding: 14px 16px 16px;
+      }
+      .gr-preview-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .gr-preview-title {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .gr-count-strip {
+        font-size: 13px;
+        background: #eef4fb;
+        border: 1px solid #cfe3f8;
+        color: var(--sf-brand-dark);
+        border-radius: var(--sf-radius);
+        padding: 8px 12px;
+        margin-bottom: 12px;
+      }
+      .gr-count-strip strong {
+        font-size: 15px;
+      }
+
+      .gr-bucket {
+        border-radius: var(--sf-radius);
+        border: 1px solid var(--sf-border);
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+      .gr-bucket:last-of-type {
+        margin-bottom: 0;
+      }
+      .gr-bucket-title {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 7px;
+      }
+      .gr-bucket--change {
+        background: #eef4fb;
+        border-color: #cfe3f8;
+      }
+      .gr-bucket--change .gr-bucket-title {
+        color: var(--sf-brand-dark);
+      }
+      .gr-bucket--safe {
+        background: #f7f8fa;
+        border-color: var(--sf-border-strong);
+      }
+      .gr-bucket--safe .gr-bucket-title {
+        color: var(--sf-text-weaker);
+      }
+      .gr-bucket--lock {
+        background: #f4f0fb;
+        border-color: #ddd0f2;
+      }
+      .gr-bucket--lock .gr-bucket-title {
+        color: #7a5bd6;
+      }
+
+      .gr-item {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        font-size: 12px;
+        line-height: 1.5;
+        padding: 3px 0;
+      }
+      .gr-item-ic {
+        flex: none;
+        font-size: 13px;
+        line-height: 1.3;
+      }
+      .gr-item--change .gr-item-ic {
+        color: var(--sf-brand);
+      }
+      .gr-item--safe .gr-item-ic {
+        color: var(--sf-text-weaker);
+      }
+      .gr-item--lock .gr-item-ic {
+        color: #7a5bd6;
+      }
+      .gr-item strong {
+        color: var(--sf-text);
+      }
+      .gr-empty {
+        font-size: 12px;
+        font-style: italic;
+        color: var(--sf-text-weaker);
+        margin: 2px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This interactive concept needs JavaScript.</noscript>
+    <script src="../../assets/shell.js"></script>
+    <script>
+      (function () {
+        const state = {
+          moment: 0,
+          scope: { lob: new Set(), quote: new Set(), removed: new Set() }
+        };
+        const _hm = location.hash.match(/m(\d)/);
+        if (_hm) state.moment = Number(_hm[1]);
+        let CTX;
+
+        function badge() {
+          const m = document.querySelector(".cc-badge-mount");
+          if (m)
+            m.innerHTML =
+              '<span class="slds-badge badge-warning">Requires Review</span>';
+        }
+
+        function statusStrip() {
+          const e = CTX.data.engine;
+          return (
+            '<dl class="cc-status">' +
+            "<dt>Status</dt><dd><span class=\"slds-badge badge-warning\">" +
+            e.status +
+            "</span></dd>" +
+            "<dt>Stage</dt><dd>" +
+            e.stage +
+            "</dd>" +
+            "<dt>Files</dt><dd>Preprocessed: " +
+            e.filesPrep +
+            " | Extracted: " +
+            e.filesExt +
+            "</dd>" +
+            "<dt>Completed</dt><dd>" +
+            e.completed +
+            "</dd>" +
+            "</dl>"
+          );
+        }
+
+        function runSummaryHTML() {
+          const r = CTX.computeRunSummary(state.scope);
+          const empty = r.selectedCount === 0 && state.scope.quote.size === 0;
+          const lines = r.lines
+            .map(
+              (l) =>
+                '<div class="run-line run-line--' +
+                l.kind +
+                '"><span class="rl-ic">' +
+                (l.kind === "update" ? "↻" : l.kind === "lock" ? "🔒" : "✓") +
+                "</span><span>" +
+                CTX.esc(l.text) +
+                "</span></div>"
+            )
+            .join("");
+          return (
+            '<div class="run-summary' +
+            (empty ? " is-empty" : "") +
+            '"><p class="run-summary-title">' +
+            (empty ? "Nothing selected yet" : "✓ What this run will do") +
+            " — " +
+            r.selectedCount +
+            " of " +
+            r.total +
+            " lines" +
+            "</p>" +
+            (empty
+              ? '<p class="cc-hint" style="margin:0">All lines are off. Turn on a line above to see exactly what a reprocess would change.</p>'
+              : lines) +
+            "</div>"
+          );
+        }
+
+        function render() {
+          badge();
+          const mount = document.getElementById("cc-body");
+          mount.innerHTML = statusStrip();
+          mount.appendChild(CTX.momentStepper(state.moment, go));
+
+          const box = document.createElement("div");
+          if (state.moment === 0) box.innerHTML = momentArrival();
+          else if (state.moment === 1) box.innerHTML = momentFiles();
+          else if (state.moment === 2) box.innerHTML = momentScope();
+          else box.innerHTML = momentRun();
+          mount.appendChild(box);
+          bind(box);
+        }
+
+        function momentArrival() {
+          return (
+            CTX.bellAlertHTML() +
+            '<div class="cc-actions"><button class="slds-btn slds-btn--brand" data-go="1">Review the files →</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-reprocess-now>Skip to reprocess</button></div>' +
+            '<p class="cc-hint">A follow-up email used to silently re-run the engine and overwrite your work. Now it just rings this bell — you decide what happens next.</p>'
+          );
+        }
+
+        function momentFiles() {
+          return (
+            '<p class="cc-section-title">Square up the files</p>' +
+            '<p class="cc-section-sub">The engine reprocesses the <strong>full set of files shown here</strong>. Remove anything superseded, add anything missing — then move on to scope.</p>' +
+            CTX.renderFiles(state.scope) +
+            '<div class="cc-actions"><button class="slds-btn" data-go="0">← Back</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="2">Files look right → scope it</button></div>'
+          );
+        }
+
+        /* ---- the star: a per-line before→after phrase built from real data --- */
+        function diffPhrase(l) {
+          const isFollowupLine = l.label === CTX.data.followup.line;
+          if (isFollowupLine) {
+            return (
+              CTX.esc(l.label) +
+              " — vehicle schedule refreshed from <strong>" +
+              CTX.esc(CTX.data.followup.file) +
+              "</strong>: " +
+              CTX.esc(l.exposure) +
+              " re-read, " +
+              CTX.esc(l.loss).toLowerCase() +
+              "."
+            );
+          }
+          return (
+            CTX.esc(l.label) +
+            " — exposures and schedule re-derived from the files on this Communication (" +
+            CTX.esc(l.exposure) +
+            "; " +
+            CTX.esc(l.loss).toLowerCase() +
+            ")."
+          );
+        }
+
+        function previewHTML() {
+          const scope = state.scope;
+          const r = CTX.computeRunSummary(scope);
+          const selected = CTX.data.lobs.filter((l) => scope.lob.has(l.id));
+          const unselected = CTX.data.lobs.filter((l) => !scope.lob.has(l.id));
+          const quoted = CTX.data.lobs.filter((l) => scope.quote.has(l.id));
+
+          const changeItems = [];
+          selected.forEach((l) =>
+            changeItems.push(
+              '<div class="gr-item gr-item--change"><span class="gr-item-ic">↻</span><span>' +
+                diffPhrase(l) +
+                "</span></div>"
+            )
+          );
+          quoted.forEach((l) =>
+            changeItems.push(
+              '<div class="gr-item gr-item--change"><span class="gr-item-ic">↻</span><span>' +
+                CTX.esc(l.label) +
+                " LOB Quote — program design updated to match the reprocessed exposures above.</span></div>"
+            )
+          );
+          const changeHTML = changeItems.length
+            ? changeItems.join("")
+            : '<p class="gr-empty">Nothing selected yet. Toggle a line on the left to preview its changes here.</p>';
+
+          const safeHTML = unselected.length
+            ? unselected
+                .map(
+                  (l) =>
+                    '<div class="gr-item gr-item--safe"><span class="gr-item-ic">✓</span><span>' +
+                    CTX.esc(l.label) +
+                    " — left exactly as you have it. Any hand-entered data is safe.</span></div>"
+                )
+                .join("")
+            : '<p class="gr-empty">Every line is in scope for this run.</p>';
+
+          return (
+            '<div class="gr-preview">' +
+            '<div class="gr-preview-head"><div class="gr-preview-title">When you reprocess:</div></div>' +
+            '<div class="gr-count-strip"><strong>' +
+            r.selectedCount +
+            " of " +
+            r.total +
+            "</strong> line" +
+            (r.total === 1 ? "" : "s") +
+            " will change.</div>" +
+            '<div class="gr-bucket gr-bucket--change"><div class="gr-bucket-title">↻ Will change</div>' +
+            changeHTML +
+            "</div>" +
+            '<div class="gr-bucket gr-bucket--safe"><div class="gr-bucket-title">✓ Stays as you left it</div>' +
+            safeHTML +
+            "</div>" +
+            '<div class="gr-bucket gr-bucket--lock"><div class="gr-bucket-title">🔒 Protected</div>' +
+            '<div class="gr-item gr-item--lock"><span class="gr-item-ic">🔒</span><span><strong>' +
+            CTX.esc(CTX.data.protectedField) +
+            "</strong> is never overwritten by a reprocess.</span></div></div>" +
+            '<p class="cc-hint" style="margin-top:10px">The engine re-reads every file either way — Salesforce is written only for the lines marked <strong>Will change</strong> above.</p>' +
+            "</div>"
+          );
+        }
+
+        function momentScope() {
+          const rows = CTX.data.lobs
+            .map(function (l) {
+              const lobOn = state.scope.lob.has(l.id);
+              const qOn = state.scope.quote.has(l.id);
+              return (
+                '<div class="gr-row' +
+                (l.changed ? " gr-row--flag" : "") +
+                '">' +
+                '<button class="sw' +
+                (lobOn ? " on" : "") +
+                '" data-lob="' +
+                l.id +
+                '" role="switch" aria-checked="' +
+                lobOn +
+                '" aria-label="Update ' +
+                CTX.esc(l.label) +
+                '"></button>' +
+                '<div class="gr-row-main">' +
+                '<div class="gr-row-top"><span class="gr-row-name">' +
+                CTX.esc(l.label) +
+                "</span>" +
+                (l.changed ? '<span class="gr-newflag">New documents</span>' : "") +
+                "</div>" +
+                '<div class="gr-row-ctx">' +
+                CTX.esc(l.ctx) +
+                "</div>" +
+                '<button class="chip gr-quote-chip' +
+                (qOn ? " on" : "") +
+                '" data-quote="' +
+                l.id +
+                '" aria-pressed="' +
+                qOn +
+                '" aria-label="Also update ' +
+                CTX.esc(l.label) +
+                ' program design">' +
+                (qOn ? "✓ " : "+ ") +
+                "Program design</button>" +
+                "</div></div>"
+              );
+            })
+            .join("");
+
+          return (
+            '<p class="cc-section-title">Review each line before you commit</p>' +
+            '<p class="cc-section-sub">Toggle a line on the left. Watch exactly what changes on the right — nothing is written until you reprocess.</p>' +
+            '<div class="gr-warning">⚠️ Reprocessing re-reads <strong>every file</strong> on this Communication, but Salesforce is written only for the lines you turn on below.</div>' +
+            '<div class="gr-grid"><div class="gr-list">' +
+            rows +
+            "</div>" +
+            previewHTML() +
+            "</div>" +
+            '<div class="cc-actions"><button class="slds-btn" data-go="1">← Back to files</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="3">Review &amp; reprocess →</button></div>'
+          );
+        }
+
+        function momentRun() {
+          const sel = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id));
+          return (
+            '<p class="cc-section-title">Ready to reprocess</p>' +
+            runSummaryHTML() +
+            '<div class="cc-alert cc-alert--lock" style="margin-top:14px"><div class="cc-alert-ic">🔒</div><div><strong>' +
+            CTX.esc(CTX.data.protectedField) +
+            "</strong> is never overwritten by a reprocess. Astrus fills it once as an early estimate; after that it's yours. (Managed as an admin-editable exclusion list — more fields can be added later without a code change.)</div></div>" +
+            '<div class="cc-actions">' +
+            '<button class="slds-btn slds-btn--brand" data-reprocess ' +
+            (sel.length === 0 && state.scope.quote.size === 0 ? "disabled" : "") +
+            ">Reprocess" +
+            (sel.length ? " " + sel.length + " line" + (sel.length === 1 ? "" : "s") : "") +
+            "</button>" +
+            '<button class="slds-btn" data-processnew>Process as New</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-go="2">← Adjust scope</button></div>' +
+            '<p class="cc-hint"><strong>Reprocess</strong> runs against the scope above. <strong>Process as New</strong> ignores scope and rebuilds everything from scratch (first-time behavior).</p>'
+          );
+        }
+
+        function go(i) {
+          state.moment = i;
+          render();
+        }
+
+        function bind(box) {
+          box.querySelectorAll("[data-go]").forEach(function (b) {
+            b.onclick = () => go(Number(b.dataset.go));
+          });
+          box.querySelectorAll(".file-remove").forEach(function (b) {
+            b.onclick = function () {
+              state.scope.removed.add(b.dataset.file);
+              CTX.toast(
+                "success",
+                "Removed from record",
+                b.dataset.file + " was unlinked from this Communication. The file still exists in Salesforce."
+              );
+              render();
+            };
+          });
+          box.querySelectorAll("[data-lob]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.lob;
+              state.scope.lob.has(id)
+                ? state.scope.lob.delete(id)
+                : state.scope.lob.add(id);
+              render();
+            };
+          });
+          box.querySelectorAll("[data-quote]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.quote;
+              state.scope.quote.has(id)
+                ? state.scope.quote.delete(id)
+                : state.scope.quote.add(id);
+              render();
+            };
+          });
+          const rn = box.querySelector("[data-reprocess-now]");
+          if (rn) rn.onclick = () => go(2);
+          const rp = box.querySelector("[data-reprocess]");
+          if (rp)
+            rp.onclick = async function () {
+              const ok = await CTX.runReprocess(state.scope);
+              if (ok) {
+                state.scope = { lob: new Set(), quote: new Set(), removed: state.scope.removed };
+                state.moment = 0;
+                render();
+              }
+            };
+          const pn = box.querySelector("[data-processnew]");
+          if (pn)
+            pn.onclick = async function () {
+              const ok = await CTX.confirmModal({
+                title: "Process as a new submission?",
+                body:
+                  "<p>This ignores your scope selections and rebuilds <strong>everything</strong> from the current files — a fresh, potentially duplicate submission. Use this only for a genuinely new deal.</p>",
+                confirmLabel: "Process as New",
+                destructive: true
+              });
+              if (ok)
+                CTX.toast(
+                  "success",
+                  "Process as New initiated",
+                  "A new submission has been sent to the AI engine."
+                );
+            };
+        }
+
+        window.CONCEPT = {
+          name: "Guided Review",
+          render: function (mount, ctx) {
+            CTX = ctx;
+            render();
+          }
+        };
+        ASTRUS.boot(window.CONCEPT);
+      })();
+    </script>
+  </body>
+</html>

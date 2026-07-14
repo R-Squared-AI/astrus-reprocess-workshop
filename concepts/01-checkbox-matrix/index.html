@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astrus Reprocess · Checkbox Matrix</title>
+    <link rel="stylesheet" href="../../assets/shell.css" />
+    <link rel="stylesheet" href="../../assets/cc.css" />
+    <style>
+      /* ---- Concept 01: Checkbox Matrix (faithful to the RFC mockup) ---- */
+      .mx-warning {
+        background: var(--sf-warn-bg);
+        border: 1px solid var(--sf-warn-border);
+        border-left: 4px solid var(--sf-warn);
+        border-radius: var(--sf-radius);
+        padding: 11px 14px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+      .mx-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        overflow: hidden;
+      }
+      .mx-table thead th {
+        background: #f7f9fc;
+        border-bottom: 1px solid var(--sf-border);
+        padding: 10px 12px;
+        text-align: center;
+        font-size: 11px;
+        color: var(--sf-text-weak);
+        font-weight: 700;
+        vertical-align: bottom;
+      }
+      .mx-table thead th.col-lob {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--sf-text-weaker);
+      }
+      .mx-sub {
+        display: block;
+        font-weight: 400;
+        font-size: 10px;
+        color: var(--sf-text-weaker);
+        margin-top: 2px;
+      }
+      .mx-table tbody td {
+        padding: 12px;
+        border-bottom: 1px solid #f1f1f1;
+        text-align: center;
+      }
+      .mx-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .mx-table tbody tr.changed {
+        background: #f1fbf4;
+      }
+      .mx-lob {
+        text-align: left;
+      }
+      .mx-lob .name {
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .mx-lob .ctx {
+        font-size: 11.5px;
+        color: var(--sf-text-weaker);
+        margin-top: 1px;
+      }
+      .mx-lob .newflag {
+        display: inline-block;
+        margin-top: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--sf-success);
+        background: var(--sf-success-bg);
+        padding: 1px 7px;
+        border-radius: 9px;
+      }
+      .mx-check {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        border: 2px solid var(--sf-border-strong);
+        background: #fff;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        transition: all 0.12s ease;
+        padding: 0;
+      }
+      .mx-check.on {
+        background: var(--sf-brand);
+        border-color: var(--sf-brand);
+      }
+      .mx-check:hover {
+        border-color: var(--sf-brand);
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This interactive concept needs JavaScript.</noscript>
+    <script src="../../assets/shell.js"></script>
+    <script>
+      (function () {
+        const state = {
+          moment: 0,
+          scope: { lob: new Set(), quote: new Set(), removed: new Set() }
+        };
+        const _hm = location.hash.match(/m(\d)/);
+        if (_hm) state.moment = Number(_hm[1]);
+        let CTX;
+
+        function badge() {
+          const m = document.querySelector(".cc-badge-mount");
+          if (m)
+            m.innerHTML =
+              '<span class="slds-badge badge-warning">Requires Review</span>';
+        }
+
+        function statusStrip() {
+          const e = CTX.data.engine;
+          return (
+            '<dl class="cc-status">' +
+            "<dt>Status</dt><dd><span class=\"slds-badge badge-warning\">" +
+            e.status +
+            "</span></dd>" +
+            "<dt>Stage</dt><dd>" +
+            e.stage +
+            "</dd>" +
+            "<dt>Files</dt><dd>Preprocessed: " +
+            e.filesPrep +
+            " | Extracted: " +
+            e.filesExt +
+            "</dd>" +
+            "<dt>Completed</dt><dd>" +
+            e.completed +
+            "</dd>" +
+            "</dl>"
+          );
+        }
+
+        function runSummaryHTML() {
+          const r = CTX.computeRunSummary(state.scope);
+          const empty = r.selectedCount === 0 && state.scope.quote.size === 0;
+          const lines = r.lines
+            .map(
+              (l) =>
+                '<div class="run-line run-line--' +
+                l.kind +
+                '"><span class="rl-ic">' +
+                (l.kind === "update" ? "↻" : l.kind === "lock" ? "🔒" : "✓") +
+                "</span><span>" +
+                CTX.esc(l.text) +
+                "</span></div>"
+            )
+            .join("");
+          return (
+            '<div class="run-summary' +
+            (empty ? " is-empty" : "") +
+            '"><p class="run-summary-title">' +
+            (empty ? "Nothing selected yet" : "✓ What this run will do") +
+            " — " +
+            r.selectedCount +
+            " of " +
+            r.total +
+            " lines" +
+            "</p>" +
+            (empty
+              ? '<p class="cc-hint" style="margin:0">All lines are off. Turn on a line above to see exactly what a reprocess would change.</p>'
+              : lines) +
+            "</div>"
+          );
+        }
+
+        function render() {
+          badge();
+          const mount = document.getElementById("cc-body");
+          mount.innerHTML = statusStrip();
+          mount.appendChild(CTX.momentStepper(state.moment, go));
+
+          const box = document.createElement("div");
+          if (state.moment === 0) box.innerHTML = momentArrival();
+          else if (state.moment === 1) box.innerHTML = momentFiles();
+          else if (state.moment === 2) box.innerHTML = momentScope();
+          else box.innerHTML = momentRun();
+          mount.appendChild(box);
+          bind(box);
+        }
+
+        function momentArrival() {
+          return (
+            CTX.bellAlertHTML() +
+            '<div class="cc-actions"><button class="slds-btn slds-btn--brand" data-go="1">Review the files →</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-reprocess-now>Skip to reprocess</button></div>' +
+            '<p class="cc-hint">A follow-up email used to silently re-run the engine and overwrite your work. Now it just rings this bell — you decide what happens next.</p>'
+          );
+        }
+
+        function momentFiles() {
+          return (
+            '<p class="cc-section-title">Square up the files</p>' +
+            '<p class="cc-section-sub">The engine reprocesses the <strong>full set of files shown here</strong>. Remove anything superseded, add anything missing — then move on to scope.</p>' +
+            CTX.renderFiles(state.scope) +
+            '<div class="cc-actions"><button class="slds-btn" data-go="0">← Back</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="2">Files look right → scope it</button></div>'
+          );
+        }
+
+        function momentScope() {
+          const rows = CTX.data.lobs
+            .map(function (l) {
+              const lobOn = state.scope.lob.has(l.id);
+              const qOn = state.scope.quote.has(l.id);
+              return (
+                '<tr class="' +
+                (l.changed ? "changed" : "") +
+                '"><td class="mx-lob"><div class="name">' +
+                CTX.esc(l.label) +
+                '</div><div class="ctx">' +
+                CTX.esc(l.ctx) +
+                "</div>" +
+                (l.changed
+                  ? '<span class="newflag">New documents</span>'
+                  : "") +
+                "</td>" +
+                '<td><button class="mx-check' +
+                (lobOn ? " on" : "") +
+                '" data-lob="' +
+                l.id +
+                '" aria-pressed="' +
+                lobOn +
+                '" aria-label="Update ' +
+                CTX.esc(l.label) +
+                '">' +
+                (lobOn ? "✓" : "") +
+                "</button></td>" +
+                '<td><button class="mx-check' +
+                (qOn ? " on" : "") +
+                '" data-quote="' +
+                l.id +
+                '" aria-pressed="' +
+                qOn +
+                '" aria-label="Update ' +
+                CTX.esc(l.label) +
+                ' quote">' +
+                (qOn ? "✓" : "") +
+                "</button></td></tr>"
+              );
+            })
+            .join("");
+          return (
+            '<p class="cc-section-title">Reprocess scope — choose what this run may update</p>' +
+            '<p class="cc-section-sub">All off by default. Reprocess writes only the lines you turn on; everything else stays exactly as you left it.</p>' +
+            '<div class="mx-warning">⚠️ Reprocessing re-reads every file on this Communication and updates <strong>only the checked lines below</strong>. Unchecked lines — and all their exposures, schedules, rates and loss history — are <strong>not touched</strong>.</div>' +
+            '<table class="mx-table"><thead><tr>' +
+            '<th class="col-lob">Line of Business</th>' +
+            '<th>Update LOB<span class="mx-sub">+ exposures, schedules, rates, losses</span></th>' +
+            '<th>Update LOB Quote<span class="mx-sub">program design</span></th>' +
+            "</tr></thead><tbody>" +
+            rows +
+            "</tbody></table>" +
+            runSummaryHTML() +
+            '<div class="cc-actions"><button class="slds-btn" data-go="1">← Back to files</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-go="3">Review &amp; reprocess →</button></div>'
+          );
+        }
+
+        function momentRun() {
+          const sel = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id));
+          return (
+            '<p class="cc-section-title">Ready to reprocess</p>' +
+            runSummaryHTML() +
+            '<div class="cc-alert cc-alert--lock" style="margin-top:14px"><div class="cc-alert-ic">🔒</div><div><strong>' +
+            CTX.esc(CTX.data.protectedField) +
+            "</strong> is never overwritten by a reprocess. Astrus fills it once as an early estimate; after that it's yours. (Managed as an admin-editable exclusion list — more fields can be added later without a code change.)</div></div>" +
+            '<div class="cc-actions">' +
+            '<button class="slds-btn slds-btn--brand" data-reprocess ' +
+            (sel.length === 0 && state.scope.quote.size === 0 ? "disabled" : "") +
+            ">Reprocess" +
+            (sel.length ? " " + sel.length + " line" + (sel.length === 1 ? "" : "s") : "") +
+            "</button>" +
+            '<button class="slds-btn" data-processnew>Process as New</button>' +
+            '<span class="spacer"></span>' +
+            '<button class="slds-btn" data-go="2">← Adjust scope</button></div>' +
+            '<p class="cc-hint"><strong>Reprocess</strong> runs against the scope above. <strong>Process as New</strong> ignores scope and rebuilds everything from scratch (first-time behavior).</p>'
+          );
+        }
+
+        function go(i) {
+          state.moment = i;
+          render();
+        }
+
+        function bind(box) {
+          box.querySelectorAll("[data-go]").forEach(function (b) {
+            b.onclick = () => go(Number(b.dataset.go));
+          });
+          box.querySelectorAll(".file-remove").forEach(function (b) {
+            b.onclick = function () {
+              state.scope.removed.add(b.dataset.file);
+              CTX.toast(
+                "success",
+                "Removed from record",
+                b.dataset.file + " was unlinked from this Communication. The file still exists in Salesforce."
+              );
+              render();
+            };
+          });
+          box.querySelectorAll("[data-lob]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.lob;
+              state.scope.lob.has(id)
+                ? state.scope.lob.delete(id)
+                : state.scope.lob.add(id);
+              render();
+            };
+          });
+          box.querySelectorAll("[data-quote]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.quote;
+              state.scope.quote.has(id)
+                ? state.scope.quote.delete(id)
+                : state.scope.quote.add(id);
+              render();
+            };
+          });
+          const rn = box.querySelector("[data-reprocess-now]");
+          if (rn) rn.onclick = () => go(2);
+          const rp = box.querySelector("[data-reprocess]");
+          if (rp)
+            rp.onclick = async function () {
+              const ok = await CTX.runReprocess(state.scope);
+              if (ok) {
+                state.scope = { lob: new Set(), quote: new Set(), removed: state.scope.removed };
+                state.moment = 0;
+                render();
+              }
+            };
+          const pn = box.querySelector("[data-processnew]");
+          if (pn)
+            pn.onclick = async function () {
+              const ok = await CTX.confirmModal({
+                title: "Process as a new submission?",
+                body:
+                  "<p>This ignores your scope selections and rebuilds <strong>everything</strong> from the current files — a fresh, potentially duplicate submission. Use this only for a genuinely new deal.</p>",
+                confirmLabel: "Process as New",
+                destructive: true
+              });
+              if (ok)
+                CTX.toast(
+                  "success",
+                  "Process as New initiated",
+                  "A new submission has been sent to the AI engine."
+                );
+            };
+        }
+
+        window.CONCEPT = {
+          name: "Checkbox Matrix",
+          render: function (mount, ctx) {
+            CTX = ctx;
+            render();
+          }
+        };
+        ASTRUS.boot(window.CONCEPT);
+      })();
+    </script>
+  </body>
+</html>

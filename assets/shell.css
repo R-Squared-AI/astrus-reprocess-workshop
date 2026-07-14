@@ -1,0 +1,526 @@
+/* ============================================================================
+   Astrus Reprocess Workshop — shared Salesforce (SLDS-faithful) page shell
+   The chrome below is intentionally NON-interactive. Only the AI Engine Status
+   control center (right column) responds to input. Concept pages inline this.
+   ============================================================================ */
+
+:root {
+  --sf-brand: #0176d3;
+  --sf-brand-dark: #014486;
+  --sf-brand-accent: #1b96ff;
+  --sf-link: #0b5cab;
+  --sf-page: #eef1f6;
+  --sf-card: #ffffff;
+  --sf-border: #e5e5e5;
+  --sf-border-strong: #c9c9c9;
+  --sf-text: #181818;
+  --sf-text-weak: #444444;
+  --sf-text-weaker: #747474;
+  --sf-success: #2e844a;
+  --sf-success-bg: #ddf5e6;
+  --sf-success-border: #91db8b;
+  --sf-warn: #dd7a01;
+  --sf-warn-bg: #fef1e5;
+  --sf-warn-border: #f9b03b;
+  --sf-error: #ba0517;
+  --sf-error-bg: #feded8;
+  --sf-error-border: #fe9339;
+  --sf-radius: 0.25rem;
+  --sf-radius-lg: 0.5rem;
+  --sf-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.05);
+  --sf-shadow-card: 0 2px 4px 0 rgba(0, 0, 0, 0.07), 0 0 1px 0 rgba(0, 0, 0, 0.1);
+  --sf-font: "Salesforce Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--sf-font);
+  background: var(--sf-page);
+  color: var(--sf-text);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Global one-line notice that this is a prototype --------------------- */
+.proto-ribbon {
+  background: #032d60;
+  color: #d3e3fb;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-align: center;
+  padding: 5px 12px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.proto-ribbon a {
+  color: #9dc7ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.proto-ribbon a:hover {
+  text-decoration: underline;
+}
+.proto-ribbon .dot {
+  opacity: 0.4;
+}
+
+/* --- Global navigation --------------------------------------------------- */
+.sf-globalnav {
+  background: #fff;
+  border-bottom: 1px solid var(--sf-border);
+  display: flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 12px 0 8px;
+  gap: 6px;
+  position: relative;
+  z-index: 5;
+}
+.sf-waffle {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--sf-radius);
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  grid-template-rows: repeat(3, 4px);
+  gap: 2px;
+  align-content: center;
+  justify-content: center;
+  color: var(--sf-text-weaker);
+}
+.sf-waffle i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sf-appname {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sf-text);
+  margin: 0 18px 0 6px;
+  letter-spacing: -0.01em;
+}
+.sf-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+}
+.sf-tab {
+  font-size: 13px;
+  color: var(--sf-text-weak);
+  padding: 6px 10px;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+}
+.sf-tab .caret {
+  font-size: 9px;
+  opacity: 0.6;
+}
+.sf-tab.active {
+  color: var(--sf-brand);
+  font-weight: 700;
+  border-bottom-color: var(--sf-brand);
+}
+.sf-globalnav .sf-search {
+  width: 200px;
+  height: 32px;
+  border: 1px solid var(--sf-border-strong);
+  border-radius: 15px;
+  background: #f3f3f3;
+  color: var(--sf-text-weaker);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 12px;
+}
+.sf-globalnav .sf-iconbtn {
+  color: var(--sf-text-weaker);
+  padding: 6px;
+  font-size: 16px;
+  position: relative;
+}
+
+/* --- Record highlights bar ---------------------------------------------- */
+.sf-record-head {
+  background: #fff;
+  border-bottom: 1px solid var(--sf-border);
+  padding: 10px 24px 0;
+}
+.sf-record-topline {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sf-record-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--sf-radius);
+  background: #5867e8;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex: none;
+}
+.sf-record-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sf-text-weaker);
+}
+.sf-record-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--sf-text);
+  margin: 1px 0 0;
+}
+.sf-record-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Highlights fields row */
+.sf-highlights {
+  display: flex;
+  gap: 40px;
+  padding: 12px 2px 10px 50px;
+  flex-wrap: wrap;
+}
+.sf-hl {
+  min-width: 90px;
+}
+.sf-hl dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sf-text-weaker);
+  margin-bottom: 2px;
+}
+.sf-hl dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sf-text);
+  font-weight: 600;
+}
+.sf-hl dd a {
+  color: var(--sf-link);
+  text-decoration: none;
+}
+
+/* record subnav (Details / Related / …) */
+.sf-subnav {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--sf-border);
+  background: #fff;
+}
+.sf-subnav .item {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--sf-text-weak);
+  border-bottom: 3px solid transparent;
+  cursor: default;
+}
+.sf-subnav .item.active {
+  color: var(--sf-brand);
+  font-weight: 700;
+  border-bottom-color: var(--sf-brand);
+}
+
+/* --- Body layout --------------------------------------------------------- */
+.sf-body {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 16px 20px 60px;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 940px) {
+  .sf-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Generic SLDS card (used for static chrome on the left) */
+.sf-card {
+  background: var(--sf-card);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  box-shadow: var(--sf-shadow-card);
+  margin-bottom: 16px;
+}
+.sf-card > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f1f1;
+  font-weight: 700;
+  font-size: 14px;
+}
+.sf-card > header .ic {
+  color: var(--sf-brand);
+}
+.sf-card .sf-card-body {
+  padding: 14px 16px 18px;
+}
+.static-note {
+  font-size: 11px;
+  color: var(--sf-text-weaker);
+  font-style: italic;
+}
+
+/* left detail grid */
+.sf-fieldgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 28px;
+}
+.sf-field .lbl {
+  font-size: 11px;
+  color: var(--sf-text-weaker);
+  text-transform: none;
+  margin-bottom: 1px;
+}
+.sf-field .val {
+  font-size: 13px;
+  color: var(--sf-text);
+  border-bottom: 1px dotted #dedede;
+  padding-bottom: 5px;
+  min-height: 18px;
+}
+.sf-field .val a {
+  color: var(--sf-link);
+  text-decoration: none;
+}
+.sf-field.full {
+  grid-column: 1 / -1;
+}
+
+/* --- SLDS-ish buttons ---------------------------------------------------- */
+.slds-btn {
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: var(--sf-radius);
+  border: 1px solid var(--sf-border-strong);
+  background: #fff;
+  color: var(--sf-brand);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.slds-btn:hover {
+  background: #f3f3f3;
+}
+.slds-btn:focus-visible {
+  outline: 2px solid var(--sf-brand-accent);
+  outline-offset: 1px;
+}
+.slds-btn--brand {
+  background: var(--sf-brand);
+  border-color: var(--sf-brand);
+  color: #fff;
+}
+.slds-btn--brand:hover {
+  background: #014486;
+}
+.slds-btn--destructive {
+  background: var(--sf-error);
+  border-color: var(--sf-error);
+  color: #fff;
+}
+.slds-btn--destructive:hover {
+  background: #8e030f;
+}
+.slds-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.slds-btn--sm {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+/* --- Badges -------------------------------------------------------------- */
+.slds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #ecebea;
+}
+.badge-warning {
+  background: var(--sf-warn-bg);
+  color: var(--sf-warn);
+  border: 1px solid var(--sf-warn-border);
+}
+.badge-success {
+  background: var(--sf-success-bg);
+  color: var(--sf-success);
+  border: 1px solid var(--sf-success-border);
+}
+.badge-error {
+  background: var(--sf-error-bg);
+  color: var(--sf-error);
+  border: 1px solid var(--sf-error-border);
+}
+.badge-neutral {
+  background: #f3f3f3;
+  color: var(--sf-text-weak);
+  border: 1px solid var(--sf-border-strong);
+}
+
+/* --- Toast --------------------------------------------------------------- */
+.toast-wrap {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(560px, 92vw);
+}
+.toast {
+  border-radius: var(--sf-radius);
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  animation: toastIn 0.25s ease;
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.toast--success {
+  background: var(--sf-success);
+}
+.toast--warning {
+  background: var(--sf-warn);
+}
+.toast--error {
+  background: var(--sf-error);
+}
+.toast strong {
+  display: block;
+}
+.toast .x {
+  margin-left: auto;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* --- Modal --------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 20, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  animation: fade 0.15s ease;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.modal {
+  background: #fff;
+  border-radius: var(--sf-radius-lg);
+  width: min(520px, 92vw);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.modal header {
+  padding: 18px 22px 6px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.modal .modal-body {
+  padding: 6px 22px 18px;
+  font-size: 13px;
+  color: var(--sf-text-weak);
+  line-height: 1.5;
+}
+.modal footer {
+  padding: 14px 22px;
+  background: #f6f7f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* --- Notification bell popover ------------------------------------------ */
+.bell-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sf-error);
+  border: 1px solid #fff;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* focus ring for interactive control-center controls */
+.cc :focus-visible {
+  outline: 2px solid var(--sf-brand-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

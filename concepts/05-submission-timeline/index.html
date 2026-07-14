@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astrus Reprocess · Submission Timeline</title>
+    <link rel="stylesheet" href="../../assets/shell.css" />
+    <link rel="stylesheet" href="../../assets/cc.css" />
+    <style>
+      /* ---- Concept 05: Submission Timeline ---- */
+      .tl-intro {
+        font-size: 12px;
+        color: var(--sf-text-weaker);
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+      .tl-list {
+        position: relative;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .tl-item {
+        position: relative;
+        padding-left: 40px;
+        padding-bottom: 18px;
+      }
+      .tl-item:last-child {
+        padding-bottom: 0;
+      }
+      .tl-item:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        left: 15px;
+        top: 28px;
+        bottom: -2px;
+        width: 2px;
+        background: #dcdfe5;
+      }
+      .tl-item--done:not(:last-child)::after {
+        background: var(--sf-success-border);
+      }
+      .tl-dot {
+        position: absolute;
+        left: 3px;
+        top: 1px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        background: #9a9fa8;
+        box-shadow: 0 0 0 3px #fff;
+        z-index: 1;
+        flex: none;
+      }
+      .tl-item--done .tl-dot {
+        background: var(--sf-success);
+      }
+      .tl-item--attention .tl-dot {
+        background: var(--sf-warn);
+      }
+      .tl-item--active .tl-dot {
+        background: var(--sf-brand);
+        box-shadow: 0 0 0 3px #fff, 0 0 0 6px #d8eafd;
+      }
+      .tl-content {
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        background: #fff;
+        padding: 11px 14px 13px;
+      }
+      .tl-item--done .tl-content {
+        background: #fafffc;
+        border-color: #e3f3e7;
+      }
+      .tl-item--attention .tl-content {
+        background: var(--sf-warn-bg);
+        border-color: var(--sf-warn-border);
+      }
+      .tl-item--active .tl-content {
+        background: #f5f9ff;
+        border-color: var(--sf-brand);
+        box-shadow: 0 0 0 1px var(--sf-brand) inset;
+      }
+      .tl-title {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 13.5px;
+        color: var(--sf-text);
+        margin: 0 0 3px;
+      }
+      .tl-when {
+        margin-left: auto;
+        font-weight: 400;
+        font-size: 11px;
+        color: var(--sf-text-weaker);
+        white-space: nowrap;
+      }
+      .tl-desc {
+        font-size: 12px;
+        color: var(--sf-text-weak);
+        line-height: 1.55;
+        margin: 0;
+      }
+      .tl-desc strong {
+        color: var(--sf-text);
+      }
+      .tl-lobtags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .tl-lobtag {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--sf-success);
+        background: var(--sf-success-bg);
+        border: 1px solid var(--sf-success-border);
+        border-radius: 10px;
+        padding: 2px 9px;
+      }
+
+      /* follow-up node: file expand affordance */
+      .tl-filestoggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 9px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--sf-brand-dark);
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .tl-filestoggle .car {
+        font-size: 9px;
+        transition: transform 0.12s ease;
+      }
+      .tl-filestoggle.is-open .car {
+        transform: rotate(90deg);
+      }
+      .tl-filespanel {
+        margin-top: 10px;
+      }
+
+      /* NOW node — scope control */
+      .now-lead {
+        font-size: 12px;
+        color: var(--sf-text-weak);
+        margin: 2px 0 12px;
+        line-height: 1.5;
+      }
+      .now-rows {
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        overflow: hidden;
+        background: #fff;
+      }
+      .now-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        border-bottom: 1px solid #f1f1f1;
+      }
+      .now-row:last-child {
+        border-bottom: none;
+      }
+      .now-row-main {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+      }
+      .now-row-label .name {
+        font-weight: 700;
+        font-size: 12.5px;
+        display: block;
+      }
+      .now-row-label .ctx {
+        font-size: 11px;
+        color: var(--sf-text-weaker);
+      }
+      .now-row.is-changed {
+        background: #f1fbf4;
+      }
+      .now-newflag {
+        font-size: 9.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--sf-success);
+        background: var(--sf-success-bg);
+        border-radius: 9px;
+        padding: 1px 7px;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .now-quote-chip {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+
+      .now-summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--sf-text);
+        background: #eef4fb;
+        border: 1px solid #c9def5;
+        border-radius: var(--sf-radius);
+        padding: 9px 12px;
+        margin-top: 12px;
+      }
+      .now-summary.is-empty {
+        background: #f7f8fa;
+        border-color: var(--sf-border-strong);
+        color: var(--sf-text-weaker);
+        font-weight: 400;
+      }
+      .now-summary .lockic {
+        color: #7a5bd6;
+      }
+
+      .now-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .now-actions .spacer {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This interactive concept needs JavaScript.</noscript>
+    <script src="../../assets/shell.js"></script>
+    <script>
+      (function () {
+        const state = {
+          moment: 0,
+          scope: { lob: new Set(), quote: new Set(), removed: new Set() },
+          filesOpen: false,
+          history: []
+        };
+        const _hm = location.hash.match(/m(\d)/);
+        if (_hm) {
+          state.moment = Number(_hm[1]);
+          if (state.moment >= 1) state.filesOpen = true;
+        }
+        let CTX;
+        let tickMinutes = 31; // fabricated clock for "reprocessed" nodes, starts 4:31 PM
+
+        function nextTimestamp() {
+          const t = "Jul 13, 2026 · 4:" + (tickMinutes < 10 ? "0" : "") + tickMinutes + " PM";
+          tickMinutes += 4;
+          return t;
+        }
+
+        function badge() {
+          const m = document.querySelector(".cc-badge-mount");
+          if (m) m.innerHTML = '<span class="slds-badge badge-warning">Requires Review</span>';
+        }
+
+        function statusStrip() {
+          const e = CTX.data.engine;
+          return (
+            '<dl class="cc-status">' +
+            '<dt>Status</dt><dd><span class="slds-badge badge-warning">' +
+            e.status +
+            "</span></dd>" +
+            "<dt>Stage</dt><dd>" +
+            e.stage +
+            "</dd>" +
+            "<dt>Files</dt><dd>Preprocessed: " +
+            e.filesPrep +
+            " | Extracted: " +
+            e.filesExt +
+            "</dd>" +
+            "<dt>Completed</dt><dd>" +
+            e.completed +
+            "</dd>" +
+            "</dl>"
+          );
+        }
+
+        function tlItem(cls, dot, title, when, bodyHTML) {
+          return (
+            '<li class="tl-item tl-item--' +
+            cls +
+            '"><span class="tl-dot">' +
+            dot +
+            '</span><div class="tl-content"><div class="tl-title"><span>' +
+            title +
+            '</span><span class="tl-when">' +
+            CTX.esc(when) +
+            "</span></div>" +
+            bodyHTML +
+            "</div></li>"
+          );
+        }
+
+        function nodeReceived() {
+          const tags = CTX.data.lobs
+            .map((l) => '<span class="tl-lobtag">✓ ' + CTX.esc(l.label) + "</span>")
+            .join("");
+          return tlItem(
+            "done",
+            "✓",
+            "Submission received &amp; processed",
+            "Jul 8, 2026",
+            '<p class="tl-desc">The AI engine read every file on ' +
+              CTX.esc(CTX.data.com) +
+              " and built out all 4 lines of business from a standing start." +
+              "</p>" +
+              '<div class="tl-lobtags">' +
+              tags +
+              "</div>"
+          );
+        }
+
+        function nodeReviewed() {
+          return tlItem(
+            "done",
+            "✓",
+            "You reviewed exposures",
+            "Jul 9–12, 2026",
+            '<p class="tl-desc"><strong>' +
+              CTX.esc(CTX.data.underwriter) +
+              "</strong> reviewed every exposure line by line — including correcting the Indiana WC class code (Pat)." +
+              " No line moved after that without your say-so." +
+              "</p>"
+          );
+        }
+
+        function nodeFollowup() {
+          const f = CTX.data.followup;
+          const fileCount = CTX.data.files.length - state.scope.removed.size;
+          const panel = state.filesOpen
+            ? '<div class="tl-filespanel">' + CTX.renderFiles(state.scope) + "</div>"
+            : "";
+          return tlItem(
+            "attention",
+            "🔔",
+            "Follow-up email — revised " + CTX.esc(f.line).toLowerCase() + " schedule",
+            f.when,
+            '<p class="tl-desc">' +
+              CTX.esc(f.desc) +
+              ' <strong>Nothing was reprocessed automatically.</strong> Your prior review is untouched.</p>' +
+              '<button class="tl-filestoggle' +
+              (state.filesOpen ? " is-open" : "") +
+              '" data-toggle-files aria-expanded="' +
+              state.filesOpen +
+              '"><span class="car">▶</span>' +
+              fileCount +
+              " file" +
+              (fileCount === 1 ? "" : "s") +
+              ' now on this Communication · review</button>' +
+              panel
+          );
+        }
+
+        function nowRowsHTML() {
+          return (
+            '<div class="now-rows">' +
+            CTX.data.lobs
+              .map(function (l) {
+                const lobOn = state.scope.lob.has(l.id);
+                const qOn = state.scope.quote.has(l.id);
+                return (
+                  '<div class="now-row' +
+                  (l.changed ? " is-changed" : "") +
+                  '">' +
+                  '<div class="now-row-main">' +
+                  '<button class="sw' +
+                  (lobOn ? " on" : "") +
+                  '" data-lob="' +
+                  l.id +
+                  '" role="switch" aria-checked="' +
+                  lobOn +
+                  '" aria-label="Update ' +
+                  CTX.esc(l.label) +
+                  '"></button>' +
+                  '<div class="now-row-label"><span class="name">' +
+                  CTX.esc(l.label) +
+                  (l.changed ? '<span class="now-newflag">New docs</span>' : "") +
+                  '</span><span class="ctx">' +
+                  CTX.esc(l.ctx) +
+                  "</span></div>" +
+                  "</div>" +
+                  '<button class="chip now-quote-chip' +
+                  (qOn ? " on" : "") +
+                  '" data-quote="' +
+                  l.id +
+                  '" aria-pressed="' +
+                  qOn +
+                  '">' +
+                  (qOn ? "✓ Quote" : "Quote") +
+                  "</button>" +
+                  "</div>"
+                );
+              })
+              .join("") +
+            "</div>"
+          );
+        }
+
+        function nowSummaryHTML() {
+          const r = CTX.computeRunSummary(state.scope);
+          const staying = r.total - r.selectedCount;
+          const empty = r.selectedCount === 0 && r.quoteCount === 0;
+          if (empty) {
+            return (
+              '<div class="now-summary is-empty">Nothing selected yet — turn on a line above to see exactly what a reprocess would change.</div>'
+            );
+          }
+          return (
+            '<div class="now-summary">Will update <strong>' +
+            r.selectedCount +
+            " line" +
+            (r.selectedCount === 1 ? "" : "s") +
+            "</strong>; " +
+            staying +
+            " stay" +
+            (staying === 1 ? "s" : "") +
+            " untouched" +
+            (r.quoteCount ? "; " + r.quoteCount + " quote" + (r.quoteCount === 1 ? "" : "s") + " updated" : "") +
+            '; <span class="lockic">🔒</span> premium protected</div>'
+          );
+        }
+
+        function nodeNow() {
+          const r = CTX.computeRunSummary(state.scope);
+          const disabled = r.selectedCount === 0 && r.quoteCount === 0;
+          return tlItem(
+            "active",
+            "●",
+            "NOW — you decide",
+            "Today",
+            '<p class="now-lead">Nothing moves until you pick what this reprocess may touch. Everything else on this submission stays exactly as you left it.</p>' +
+              nowRowsHTML() +
+              nowSummaryHTML() +
+              '<div class="now-actions">' +
+              '<button class="slds-btn slds-btn--brand" data-reprocess ' +
+              (disabled ? "disabled" : "") +
+              ">Reprocess" +
+              (r.selectedCount ? " " + r.selectedCount + " line" + (r.selectedCount === 1 ? "" : "s") : "") +
+              "</button>" +
+              '<button class="slds-btn" data-processnew>Process as New</button>' +
+              '<span class="spacer"></span>' +
+              "</div>" +
+              '<p class="cc-hint">Reprocess re-reads every file but writes only the lines you turned on. Process as New ignores scope and rebuilds everything.</p>'
+          );
+        }
+
+        function nodeCompleted(h) {
+          return tlItem("done", "✓", h.title, h.when, '<p class="tl-desc">' + h.desc + "</p>");
+        }
+
+        function timelineHTML() {
+          let out =
+            '<ul class="tl-list">' +
+            nodeReceived() +
+            nodeReviewed() +
+            nodeFollowup() +
+            nodeNow();
+          state.history.forEach((h) => (out += nodeCompleted(h)));
+          out += "</ul>";
+          return out;
+        }
+
+        function render() {
+          badge();
+          const mount = document.getElementById("cc-body");
+          mount.innerHTML =
+            statusStrip() +
+            '<p class="tl-intro">Every step this submission has taken, and who made it happen. The engine never moves again on its own — the control lives at the point marked <strong>NOW</strong>.</p>' +
+            timelineHTML();
+          bind(mount);
+        }
+
+        function bind(mount) {
+          const ft = mount.querySelector("[data-toggle-files]");
+          if (ft)
+            ft.onclick = function () {
+              state.filesOpen = !state.filesOpen;
+              render();
+            };
+          mount.querySelectorAll(".file-remove").forEach(function (b) {
+            b.onclick = function () {
+              state.scope.removed.add(b.dataset.file);
+              CTX.toast(
+                "success",
+                "Removed from record",
+                b.dataset.file + " was unlinked from this Communication. The file still exists in Salesforce."
+              );
+              render();
+            };
+          });
+          mount.querySelectorAll("[data-lob]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.lob;
+              state.scope.lob.has(id) ? state.scope.lob.delete(id) : state.scope.lob.add(id);
+              render();
+            };
+          });
+          mount.querySelectorAll("[data-quote]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.quote;
+              state.scope.quote.has(id) ? state.scope.quote.delete(id) : state.scope.quote.add(id);
+              render();
+            };
+          });
+          const rp = mount.querySelector("[data-reprocess]");
+          if (rp)
+            rp.onclick = async function () {
+              const selLabels = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id)).map((l) => l.label);
+              const ok = await CTX.runReprocess(state.scope);
+              if (ok) {
+                state.history.push({
+                  title: "Reprocessed " + (selLabels.join(", ") || "selected lines") + " — exposures &amp; schedule refreshed",
+                  when: nextTimestamp(),
+                  desc:
+                    "The AI engine re-read every file on this Communication and updated only " +
+                    (selLabels.join(", ") || "the selected lines") +
+                    ". Everything else was left exactly as it was."
+                });
+                state.scope = { lob: new Set(), quote: new Set(), removed: state.scope.removed };
+                render();
+              }
+            };
+          const pn = mount.querySelector("[data-processnew]");
+          if (pn)
+            pn.onclick = async function () {
+              const ok = await CTX.confirmModal({
+                title: "Process as a new submission?",
+                body:
+                  "<p>This ignores your scope selections and rebuilds <strong>everything</strong> from the current files — a fresh, potentially duplicate submission. Use this only for a genuinely new deal.</p>",
+                confirmLabel: "Process as New",
+                destructive: true
+              });
+              if (ok)
+                CTX.toast("success", "Process as New initiated", "A new submission has been sent to the AI engine.");
+            };
+        }
+
+        window.CONCEPT = {
+          name: "Submission Timeline",
+          render: function (mount, ctx) {
+            CTX = ctx;
+            render();
+          }
+        };
+        ASTRUS.boot(window.CONCEPT);
+      })();
+    </script>
+  </body>
+</html>

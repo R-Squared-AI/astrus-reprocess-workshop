@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astrus Reprocess · Smart Panel</title>
+    <link rel="stylesheet" href="../../assets/shell.css" />
+    <link rel="stylesheet" href="../../assets/cc.css" />
+    <style>
+      /* ---- Concept 04: Smart Panel — one calm executive decision surface ---- */
+
+      /* compact status row (replaces the 4-step stepper) */
+      .sp-statusrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .sp-statusrow .slds-badge {
+        flex: none;
+      }
+      .sp-follow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        color: var(--sf-text-weak);
+        background: #fdf6ea;
+        border: 1px solid var(--sf-warn-border);
+        border-radius: 999px;
+        padding: 4px 12px 4px 10px;
+        line-height: 1.3;
+      }
+      .sp-follow .bell {
+        font-size: 13px;
+        flex: none;
+      }
+      .sp-follow strong {
+        color: var(--sf-text);
+      }
+
+      /* files one-liner */
+      .sp-files-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        color: var(--sf-text-weak);
+        padding: 9px 12px;
+        background: #f7f9fc;
+        border: 1px solid #eef0f2;
+        border-radius: var(--sf-radius);
+        margin-bottom: 14px;
+      }
+      .sp-files-line strong {
+        color: var(--sf-text);
+      }
+      .sp-files-line .sp-super {
+        color: var(--sf-warn);
+        font-weight: 600;
+      }
+      .sp-files-toggle {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--sf-brand);
+        font-weight: 700;
+        font-size: 12.5px;
+        cursor: pointer;
+        padding: 2px 4px;
+        font-family: inherit;
+      }
+      .sp-files-toggle:hover {
+        text-decoration: underline;
+      }
+      .sp-files-wrap {
+        margin: -4px 0 14px;
+      }
+
+      /* scope chips — the signature surface */
+      .sp-scope-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--sf-text-weaker);
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      .sp-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .sp-chip {
+        position: relative;
+        font-size: 13px;
+        padding: 7px 14px;
+      }
+      .sp-chip.on {
+        box-shadow: 0 0 0 1px var(--sf-brand) inset;
+        font-weight: 700;
+      }
+      .sp-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--sf-warn);
+        display: inline-block;
+        margin-right: 1px;
+      }
+      .sp-arr {
+        font-weight: 700;
+        color: var(--sf-brand);
+      }
+      .sp-subchips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0 14px;
+        padding-left: 2px;
+      }
+      .sp-subchips .sp-sublabel {
+        font-size: 11px;
+        color: var(--sf-text-weaker);
+        margin-right: 2px;
+      }
+      .sp-chip--sub {
+        font-size: 11.5px;
+        padding: 4px 11px;
+        font-weight: 600;
+        color: var(--sf-text-weaker);
+        border-style: dashed;
+      }
+      .sp-chip--sub.on {
+        border-style: solid;
+        color: var(--sf-brand-dark);
+        font-weight: 700;
+      }
+
+      /* the one live sentence + lock chip */
+      .sp-sentence-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        border: 1px solid var(--sf-border);
+        border-radius: var(--sf-radius);
+        background: #fbfcfe;
+        padding: 12px 14px;
+        margin: 4px 0 16px;
+      }
+      .sp-sentence-row.is-set {
+        border-color: var(--sf-success-border);
+        background: var(--sf-success-bg);
+      }
+      .sp-sentence {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--sf-text);
+        flex: 1 1 320px;
+      }
+      .sp-chip--lock {
+        flex: none;
+        background: #f4f0fb;
+        border-color: #ddd0f2;
+        color: #5a3fa0;
+        cursor: default;
+        font-size: 11.5px;
+      }
+      .sp-chip--lock:hover {
+        background: #f4f0fb;
+      }
+
+      /* action row */
+      .sp-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .sp-secondary {
+        background: none;
+        border: none;
+        color: var(--sf-text-weaker);
+        font-weight: 600;
+        font-size: 12.5px;
+        cursor: pointer;
+        font-family: inherit;
+        padding: 6px 4px;
+      }
+      .sp-secondary:hover {
+        color: var(--sf-text-weak);
+        text-decoration: underline;
+      }
+
+      /* arrival (moment 0) */
+      .sp-arrival-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This interactive concept needs JavaScript.</noscript>
+    <script src="../../assets/shell.js"></script>
+    <script>
+      (function () {
+        const state = {
+          moment: 0,
+          filesOpen: false,
+          scope: { lob: new Set(), quote: new Set(), removed: new Set() }
+        };
+        const _hm = location.hash.match(/m(\d)/);
+        if (_hm) state.moment = Number(_hm[1]);
+        let CTX;
+
+        function badge() {
+          const m = document.querySelector(".cc-badge-mount");
+          if (m)
+            m.innerHTML =
+              '<span class="slds-badge badge-warning">Requires Review</span>';
+        }
+
+        function go(i) {
+          state.moment = i;
+          history.replaceState(null, "", "#m" + i);
+          render();
+        }
+
+        /* ---- moment 0: arrival + bell (kept as the entry) ---- */
+        function momentArrival() {
+          return (
+            CTX.bellAlertHTML() +
+            '<div class="sp-arrival-actions"><button class="slds-btn slds-btn--brand" data-go="1">Open the Smart Panel →</button></div>' +
+            '<p class="cc-hint">Everything you need to decide is on one screen next — no step-by-step wizard.</p>'
+          );
+        }
+
+        /* ---- moment 1: the single decision surface (the signature) ---- */
+        function statusRowHTML() {
+          const f = CTX.data.followup;
+          return (
+            '<div class="sp-statusrow">' +
+            '<span class="slds-badge badge-warning">' +
+            CTX.esc(CTX.data.engine.status) +
+            "</span>" +
+            '<span class="sp-follow"><span class="bell">🔔</span><span>Follow-up: revised <strong>' +
+            CTX.esc(f.file.replace(/_/g, " ").replace(/\.\w+$/, "")) +
+            "</strong> arrived for <strong>" +
+            CTX.esc(f.line) +
+            "</strong> — nothing reprocessed automatically.</span></span>" +
+            "</div>"
+          );
+        }
+
+        function filesLineHTML() {
+          const total = CTX.data.files.length - state.scope.removed.size;
+          const supersededCount = CTX.data.files.filter(
+            (fl) => fl.superseded && !state.scope.removed.has(fl.name)
+          ).length;
+          return (
+            '<div class="sp-files-line"><strong>' +
+            total +
+            " file" +
+            (total === 1 ? "" : "s") +
+            "</strong>&nbsp;on this Communication" +
+            (supersededCount
+              ? ' · <span class="sp-super">' +
+                supersededCount +
+                " looks superseded</span>"
+              : "") +
+            '<button class="sp-files-toggle" data-toggle-files>' +
+            (state.filesOpen ? "Hide files" : "Review files") +
+            "</button></div>" +
+            (state.filesOpen
+              ? '<div class="sp-files-wrap">' + CTX.renderFiles(state.scope) + "</div>"
+              : "")
+          );
+        }
+
+        function chipsHTML() {
+          const chips = CTX.data.lobs
+            .map(function (l) {
+              const on = state.scope.lob.has(l.id);
+              return (
+                '<button class="chip sp-chip' +
+                (on ? " on" : "") +
+                '" data-lob="' +
+                l.id +
+                '" aria-pressed="' +
+                on +
+                '" title="' +
+                CTX.esc(l.ctx) +
+                '">' +
+                (l.changed
+                  ? '<span class="sp-dot" title="New documents on this line"></span>'
+                  : "") +
+                CTX.esc(l.label) +
+                (on ? ' <span class="sp-arr">↻</span>' : "") +
+                "</button>"
+              );
+            })
+            .join("");
+
+          const selected = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id));
+          const subchips = selected.length
+            ? '<div class="sp-subchips"><span class="sp-sublabel">Also update program design for:</span>' +
+              selected
+                .map(function (l) {
+                  const qon = state.scope.quote.has(l.id);
+                  return (
+                    '<button class="chip sp-chip--sub' +
+                    (qon ? " on" : "") +
+                    '" data-quote="' +
+                    l.id +
+                    '" aria-pressed="' +
+                    qon +
+                    '">＋ ' +
+                    CTX.esc(l.label) +
+                    "</button>"
+                  );
+                })
+                .join("") +
+              "</div>"
+            : "";
+
+          return (
+            '<p class="sp-scope-title">Scope — tap a line to include it in this reprocess</p>' +
+            '<div class="sp-chips">' +
+            chips +
+            "</div>" +
+            subchips
+          );
+        }
+
+        function sentenceRowHTML() {
+          const r = CTX.computeRunSummary(state.scope);
+          const selected = CTX.data.lobs.filter((l) => state.scope.lob.has(l.id));
+          const unselected = CTX.data.lobs.filter((l) => !state.scope.lob.has(l.id));
+          let text;
+          if (selected.length === 0) {
+            text =
+              "Nothing selected yet — turn on a line above to see exactly what a reprocess would change.";
+          } else {
+            const names = selected.map((l) => CTX.esc(l.label)).join(", ");
+            text =
+              "Reprocess will update " +
+              selected.length +
+              " line" +
+              (selected.length === 1 ? "" : "s") +
+              " (" +
+              names +
+              ").";
+            if (unselected.length) {
+              text +=
+                " " +
+                unselected.length +
+                " line" +
+                (unselected.length === 1 ? "" : "s") +
+                " stay" +
+                (unselected.length === 1 ? "s" : "") +
+                " as you left " +
+                (unselected.length === 1 ? "it" : "them") +
+                ".";
+            }
+            if (r.quoteCount) {
+              text +=
+                " Program design also updates for " +
+                r.quoteCount +
+                " line" +
+                (r.quoteCount === 1 ? "" : "s") +
+                ".";
+            }
+          }
+          return (
+            '<div class="sp-sentence-row' +
+            (selected.length ? " is-set" : "") +
+            '"><p class="sp-sentence">' +
+            text +
+            '</p><span class="chip sp-chip--lock">🔒 ' +
+            CTX.esc(CTX.data.protectedField) +
+            " is protected</span></div>"
+          );
+        }
+
+        function actionsHTML() {
+          const n = state.scope.lob.size;
+          const label =
+            "Reprocess" + (n ? " " + n + " line" + (n === 1 ? "" : "s") : "");
+          return (
+            '<div class="sp-actions">' +
+            '<button class="slds-btn slds-btn--brand" data-reprocess ' +
+            (n === 0 && state.scope.quote.size === 0 ? "disabled" : "") +
+            ">" +
+            label +
+            "</button>" +
+            '<button class="sp-secondary" data-processnew>Process as New</button>' +
+            "</div>"
+          );
+        }
+
+        function momentPanel() {
+          return (
+            statusRowHTML() +
+            filesLineHTML() +
+            chipsHTML() +
+            sentenceRowHTML() +
+            actionsHTML()
+          );
+        }
+
+        function render() {
+          badge();
+          const mount = document.getElementById("cc-body");
+          mount.innerHTML = "";
+          const box = document.createElement("div");
+          box.innerHTML = state.moment === 0 ? momentArrival() : momentPanel();
+          mount.appendChild(box);
+          bind(box);
+        }
+
+        function bind(box) {
+          box.querySelectorAll("[data-go]").forEach(function (b) {
+            b.onclick = () => go(Number(b.dataset.go));
+          });
+
+          const ft = box.querySelector("[data-toggle-files]");
+          if (ft)
+            ft.onclick = function () {
+              state.filesOpen = !state.filesOpen;
+              render();
+            };
+
+          box.querySelectorAll(".file-remove").forEach(function (b) {
+            b.onclick = function () {
+              state.scope.removed.add(b.dataset.file);
+              CTX.toast(
+                "success",
+                "Removed from record",
+                b.dataset.file +
+                  " was unlinked from this Communication. The file still exists in Salesforce."
+              );
+              render();
+            };
+          });
+
+          box.querySelectorAll("[data-lob]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.lob;
+              if (state.scope.lob.has(id)) {
+                state.scope.lob.delete(id);
+                state.scope.quote.delete(id);
+              } else {
+                state.scope.lob.add(id);
+              }
+              render();
+            };
+          });
+
+          box.querySelectorAll("[data-quote]").forEach(function (b) {
+            b.onclick = function () {
+              const id = b.dataset.quote;
+              state.scope.quote.has(id)
+                ? state.scope.quote.delete(id)
+                : state.scope.quote.add(id);
+              render();
+            };
+          });
+
+          const rp = box.querySelector("[data-reprocess]");
+          if (rp)
+            rp.onclick = async function () {
+              const ok = await CTX.runReprocess(state.scope);
+              if (ok) {
+                state.scope = {
+                  lob: new Set(),
+                  quote: new Set(),
+                  removed: state.scope.removed
+                };
+                go(0);
+              }
+            };
+
+          const pn = box.querySelector("[data-processnew]");
+          if (pn)
+            pn.onclick = async function () {
+              const ok = await CTX.confirmModal({
+                title: "Process as a new submission?",
+                body:
+                  "<p>This ignores your scope selections and rebuilds <strong>everything</strong> from the current files — a fresh, potentially duplicate submission. Use this only for a genuinely new deal.</p>",
+                confirmLabel: "Process as New",
+                destructive: true
+              });
+              if (ok)
+                CTX.toast(
+                  "success",
+                  "Process as New initiated",
+                  "A new submission has been sent to the AI engine."
+                );
+            };
+        }
+
+        window.CONCEPT = {
+          name: "Smart Panel",
+          render: function (mount, ctx) {
+            CTX = ctx;
+            render();
+          }
+        };
+        ASTRUS.boot(window.CONCEPT);
+      })();
+    </script>
+  </body>
+</html>

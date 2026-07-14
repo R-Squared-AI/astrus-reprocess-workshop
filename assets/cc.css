@@ -1,0 +1,394 @@
+/* ============================================================================
+   Control Center — shared styling for the interactive AI Engine Status card.
+   The card header, follow-up alert, file square-up table, run-summary and the
+   moment stepper look the same across every concept. Each concept adds ONLY
+   its own scope-picker styles (inline in the concept page).
+   ============================================================================ */
+
+.sf-col-right {
+  position: sticky;
+  top: 12px;
+}
+
+.cc {
+  background: #fff;
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  box-shadow: var(--sf-shadow-card);
+  overflow: hidden;
+}
+.cc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eef0f2;
+}
+.cc-head-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-bolt {
+  color: #f5a623;
+  font-size: 16px;
+}
+.cc-badge-mount {
+  margin-left: auto;
+}
+.cc-body {
+  padding: 16px 18px 20px;
+}
+
+/* engine status strip (compact, shown at top of the card) */
+.cc-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 18px;
+  font-size: 12.5px;
+  padding: 12px 14px;
+  background: #f7f9fc;
+  border: 1px solid #eef0f2;
+  border-radius: var(--sf-radius);
+  margin-bottom: 14px;
+}
+.cc-status dt {
+  color: var(--sf-text-weaker);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  align-self: center;
+}
+.cc-status dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* alerts */
+.cc-alert {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--sf-radius);
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.cc-alert-ic {
+  font-size: 18px;
+  flex: none;
+  line-height: 1.2;
+}
+.cc-alert--bell {
+  background: var(--sf-warn-bg);
+  border: 1px solid var(--sf-warn-border);
+  border-left: 4px solid var(--sf-warn);
+}
+.cc-alert--info {
+  background: #eef4fb;
+  border: 1px solid #c9def5;
+  border-left: 4px solid var(--sf-brand);
+}
+.cc-alert--lock {
+  background: #f4f0fb;
+  border: 1px solid #ddd0f2;
+  border-left: 4px solid #7a5bd6;
+}
+.cc-alert em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* moment stepper */
+.cc-stepper {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.cc-step {
+  flex: 1 1 0;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--sf-border-strong);
+  background: #fff;
+  border-radius: var(--sf-radius);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--sf-text-weak);
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cc-step:hover {
+  border-color: var(--sf-brand-accent);
+}
+.cc-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  color: var(--sf-text-weaker);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex: none;
+}
+.cc-step.is-current {
+  border-color: var(--sf-brand);
+  background: #eef4fb;
+  color: var(--sf-brand-dark);
+  font-weight: 700;
+}
+.cc-step.is-current .cc-step-num {
+  background: var(--sf-brand);
+  color: #fff;
+}
+.cc-step.is-done .cc-step-num {
+  background: var(--sf-success);
+  color: #fff;
+}
+.cc-step-label {
+  line-height: 1.2;
+}
+
+/* section titles inside the card */
+.cc-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 4px 0 4px;
+}
+.cc-section-sub {
+  font-size: 12px;
+  color: var(--sf-text-weaker);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+/* files square-up */
+.files-block {
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius);
+  overflow: hidden;
+}
+.files-head {
+  padding: 10px 12px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #eef0f2;
+  font-size: 13px;
+}
+.files-sub {
+  color: var(--sf-text-weaker);
+  font-weight: 400;
+  font-size: 11.5px;
+}
+.files-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.files-table th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sf-text-weaker);
+  padding: 7px 12px;
+  border-bottom: 1px solid #eef0f2;
+  font-weight: 600;
+}
+.files-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f1f1;
+  vertical-align: middle;
+}
+.files-table tr:last-child td {
+  border-bottom: none;
+}
+.file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-name a {
+  color: var(--sf-link);
+  cursor: default;
+}
+.file-ic {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex: none;
+}
+.file-ic--pdf {
+  background: #d1344a;
+}
+.file-ic--xlsx {
+  background: #1f8a4c;
+}
+.file-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 9px;
+  letter-spacing: 0.03em;
+}
+.file-tag--new {
+  background: var(--sf-success-bg);
+  color: var(--sf-success);
+}
+.file-tag--old {
+  background: var(--sf-warn-bg);
+  color: var(--sf-warn);
+}
+.row-old {
+  background: #fffaf3;
+}
+.row-new {
+  background: #f1fbf4;
+}
+.file-act {
+  text-align: right;
+}
+.file-remove {
+  color: var(--sf-brand);
+  white-space: nowrap;
+}
+.files-foot {
+  font-size: 11px;
+  color: var(--sf-text-weaker);
+  padding: 9px 12px;
+  background: #fafbfc;
+  border-top: 1px solid #f1f1f1;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* run summary ("what this run will do") */
+.run-summary {
+  border: 1px solid var(--sf-success-border);
+  background: var(--sf-success-bg);
+  border-radius: var(--sf-radius);
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+.run-summary.is-empty {
+  border-color: var(--sf-border-strong);
+  background: #f7f8fa;
+}
+.run-summary-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.run-line {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 3px 0;
+  align-items: flex-start;
+}
+.run-line .rl-ic {
+  flex: none;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.run-line--update .rl-ic {
+  color: var(--sf-brand);
+}
+.run-line--safe .rl-ic {
+  color: var(--sf-text-weaker);
+}
+.run-line--lock .rl-ic {
+  color: #7a5bd6;
+}
+
+/* card action bar */
+.cc-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f1f1;
+}
+.cc-actions .spacer {
+  flex: 1;
+}
+.cc-hint {
+  font-size: 11.5px;
+  color: var(--sf-text-weaker);
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+/* small building blocks concepts reuse */
+.sw {
+  --w: 40px;
+  --h: 22px;
+  position: relative;
+  width: var(--w);
+  height: var(--h);
+  flex: none;
+  border-radius: 999px;
+  background: #c9cdd3;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  padding: 0;
+}
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(var(--h) - 4px);
+  height: calc(var(--h) - 4px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+.sw.on {
+  background: var(--sf-brand);
+}
+.sw.on::after {
+  transform: translateX(calc(var(--w) - var(--h)));
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--sf-border-strong);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sf-text-weak);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.chip.on {
+  background: #eef4fb;
+  border-color: var(--sf-brand);
+  color: var(--sf-brand-dark);
+}
+.chip .x {
+  opacity: 0.6;
+}
