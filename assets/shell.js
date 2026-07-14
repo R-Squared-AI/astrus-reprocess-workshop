@@ -333,21 +333,14 @@
     });
   }
   async function runProcess(scope) {
-    if (!hasUploads(scope)) {
-      toast("warning", "Upload attachments first", "Drag & drop at least one attachment before processing.");
-      return false;
-    }
-    if (MODE === "additional" && !hasSelection(scope)) {
-      toast("warning", "Choose lines", "Pick at least one line, or the entire submission.");
-      return false;
-    }
     const sel = selectedLines(scope);
     const inDocs = includedDocs(scope);
+    const selText = sel.length ? esc(sel.map((l) => l.label).join(", ")) : "the selected lines";
     if (MODE === "additional") {
       const ok = await confirmModal({
         title: scope.whole ? "Reprocess the entire submission?" : "Reprocess " + sel.length + " of " + data.lines.length + " lines?",
         body: "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
-          "</strong> and populates <strong>" + esc(sel.map((l) => l.label).join(", ")) + "</strong>.</p>" +
+          "</strong> and populates <strong>" + selText + "</strong>.</p>" +
           (scope.whole ? "" : "<p>Every other line stays locked.</p>") +
           "<p><strong>" + esc(data.protectedField) + "</strong> is protected. This can’t be undone.</p>",
         confirmLabel: scope.whole ? "Reprocess submission" : "Reprocess " + sel.length + " line" + (sel.length === 1 ? "" : "s"),
@@ -395,13 +388,10 @@
     return bar;
   }
 
-  // gate helpers — return an error string, or null if the step is satisfied
-  function uploadError(scope) {
-    return scope.uploaded.length ? null : MODE === "additional" ? "Please upload additional attachments." : "Please upload attachments.";
-  }
-  function lineError(scope) {
-    return hasSelection(scope) ? null : "Please select at least one line of business.";
-  }
+  // Gate helpers — DISABLED (demo can click through the whole flow without
+  // uploading or selecting). Return null so nothing blocks navigation.
+  function uploadError() { return null; }
+  function lineError() { return null; }
 
   /* ---- static Salesforce chrome ---------------------------------------- */
   function sideCardsHTML() {
