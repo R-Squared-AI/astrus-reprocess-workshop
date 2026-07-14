@@ -331,7 +331,7 @@
       toast("warning", "Upload attachments first", "Drag & drop at least one attachment before processing.");
       return false;
     }
-    if (!hasSelection(scope)) {
+    if (MODE === "additional" && !hasSelection(scope)) {
       toast("warning", "Choose lines", "Pick at least one line, or the entire submission.");
       return false;
     }
@@ -353,8 +353,8 @@
     }
     const ok = await confirmModal({
       title: "Process this submission?",
-      body: "<p>Astrus reads the <strong>" + inDocs.length + " attachment" + (inDocs.length === 1 ? "" : "s") +
-        "</strong> and creates <strong>" + esc(sel.map((l) => l.label).join(", ")) + "</strong> on a new submission.</p>" +
+      body: "<p>Astrus reads all <strong>" + inDocs.length + " attachment" + (inDocs.length === 1 ? "" : "s") +
+        "</strong> and creates the submission — <strong>all lines of business</strong>.</p>" +
         "<p>A submission number will be assigned when processing completes.</p>",
       confirmLabel: "Process submission",
       destructive: false
@@ -474,6 +474,24 @@
     const badgeMount = document.querySelector(".cc-badge-mount");
     if (badgeMount) badgeMount.innerHTML = statusBadge();
     const mount = document.getElementById("cc-body");
+    // New submission = simple: just Upload → Process (no review, no line picking).
+    if (MODE === "initial") {
+      const scope = newScope();
+      function renderInit() {
+        mount.innerHTML =
+          bannerHTML() +
+          renderUploadStep(scope) +
+          '<div class="cc-initnote">Astrus reads every uploaded attachment and creates the submission — <strong>all lines of business</strong> at once. You fine-tune individual lines later by reprocessing.</div>' +
+          '<div class="cc-actions"><span class="spacer"></span><button class="slds-btn slds-btn--brand" id="cc-init-run"' +
+          (scope.uploaded.length ? "" : " disabled") + ">Process submission →</button></div>";
+        bindUploadStep(mount, scope, renderInit);
+        const b = mount.querySelector("#cc-init-run");
+        if (b) b.onclick = async () => { const ok = await runProcess(scope); if (ok) { scope.uploaded = []; renderInit(); } };
+      }
+      renderInit();
+      document.title = "Astrus New Submission · " + conceptName;
+      return;
+    }
     const ctx = {
       mode: MODE,
       data: data,
