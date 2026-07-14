@@ -708,3 +708,87 @@
 .ck-check:hover { border-color: #2e844a; }
 .ck-check.on { background: #2e844a; border-color: #2e844a; }
 .lock-ic { font-size: 11px; }
+
+/* ==== Round 5 — pro stepper, standardized status strip, bolder =========== */
+
+/* status strip now sits between the card header and body (shell-rendered) */
+#cc-status.cc-status {
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid #e7eaee;
+  border-radius: 0;
+  background: #f6f8fb;
+  padding: 12px 18px;
+  grid-template-columns: 96px 1fr;
+  gap: 6px 16px;
+}
+#cc-status.cc-status dt { font-size: 10px; }
+#cc-status.cc-status dd { font-size: 12.5px; }
+
+/* control-center body: a little more breathing room up top */
+.cc-body { padding-top: 16px; }
+
+/* professional, centered stepper — number stacked over label, roomy */
+.cc-stepper {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 18px;
+  flex-wrap: nowrap;
+}
+.cc-step {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 12px 6px 10px;
+  text-align: center;
+  border: 1.5px solid #dfe3e8;
+  border-radius: 10px;
+  background: #fff;
+}
+.cc-step:hover { border-color: var(--sf-brand-accent); background: #fbfdff; }
+.cc-step-num {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  background: #eef1f5;
+  color: #8a94a0;
+}
+.cc-step-label {
+  font-size: 11.5px;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--sf-text-weak);
+}
+.cc-step.is-current {
+  border-color: var(--sf-brand);
+  box-shadow: 0 0 0 1px var(--sf-brand) inset;
+  background: #eaf4fe;
+}
+.cc-step.is-current .cc-step-num { background: var(--sf-brand); color: #fff; }
+.cc-step.is-current .cc-step-label { color: var(--sf-brand-dark); font-weight: 700; }
+.cc-step.is-done { border-color: #bfe6cb; background: #f1fbf4; }
+.cc-step.is-done .cc-step-num { background: #2e844a; color: #fff; }
+.cc-step.is-done .cc-step-label { color: #1a7a3a; font-weight: 600; }
+
+/* BOLDER — the "new attachments received" badge */
+.badge-attn {
+  background: #ffe3bd;
+  color: #7a3d00;
+  border: 1.5px solid #e07b00;
+  font-weight: 800;
+}
+
+/* BOLDER — affirmative / will-populate states */
+.line-row.on, .line-row.forced { background: #dff4e6; box-shadow: inset 4px 0 0 #2e844a; }
+.line-row.on .line-name, .line-row.forced .line-name { color: #08351a; }
+.tile.on { background: #ddf4e5; border-color: #1f7a3f; border-width: 2.5px; box-shadow: 0 5px 16px -8px rgba(31,122,63,.8); }
+.pill { background: #dff4e6; border-width: 2px; }
+.lane--pop .lane-head { background: #dff4e6; }
+.sw.on { background: #1f7a3f; }
+.ck-check.on { background: #1f7a3f; border-color: #1f7a3f; }
+.cc-mode-opt.on { background: #eaf4fe; border-color: var(--sf-brand); box-shadow: 0 0 0 1px var(--sf-brand) inset; }

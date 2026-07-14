@@ -27,6 +27,7 @@
       stage: "complete",
       filesPrep: "5 / 5",
       filesExt: "5 / 5",
+      lastProgress: "7/13/2026, 4:10:13 PM",
       completed: "7/13/2026, 4:22:32 PM"
     },
     protectedField: "Estimated / Proposed Bound Premium",
@@ -87,6 +88,21 @@
   /* ---- badge (Round 3: New attachments received) ----------------------- */
   function statusBadge() {
     return '<span class="slds-badge badge-attn">📎 New attachments received</span>';
+  }
+
+  /* ---- standard status strip (Round 5: rendered by the shell so it is
+     IDENTICAL on every concept — concepts must not render their own) ------ */
+  function statusStripHTML() {
+    const e = data.engine;
+    return (
+      '<dl class="cc-status" id="cc-status">' +
+      '<dt>Status</dt><dd><span class="slds-badge badge-warning">' + e.status + "</span></dd>" +
+      "<dt>Stage</dt><dd>" + e.stage + "</dd>" +
+      "<dt>Files</dt><dd>Preprocessed " + e.filesPrep + " · Extracted " + e.filesExt + "</dd>" +
+      "<dt>Last Progress</dt><dd>" + e.lastProgress + "</dd>" +
+      "<dt>Completed</dt><dd>" + e.completed + "</dd>" +
+      "</dl>"
+    );
   }
 
   /* ---- toast ------------------------------------------------------------ */
@@ -306,6 +322,7 @@
       '<div class="sf-col-right"><section class="cc" id="cc"><div class="cc-head">' +
       '<div class="cc-head-title"><span class="cc-bolt">⚡</span> Submissions AI Engine Status</div>' +
       '<span class="cc-badge-mount"></span></div>' +
+      statusStripHTML() +
       '<div class="cc-body" id="cc-body"></div></section>' +
       sideCardsHTML() + "</div></div>"
     );

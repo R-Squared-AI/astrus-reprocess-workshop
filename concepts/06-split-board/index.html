@@ -82,7 +82,7 @@
 
         function render() {
           const mount = document.getElementById("cc-body");
-          mount.innerHTML = statusStrip();
+          mount.innerHTML = "";
           mount.appendChild(CTX.momentStepper(state.moment, go));
           const box = document.createElement("div");
           if (state.moment === 0) box.innerHTML = mArrival();

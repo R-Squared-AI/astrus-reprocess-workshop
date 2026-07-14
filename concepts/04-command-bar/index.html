@@ -106,6 +106,9 @@
       .pill-doc .file-ic { margin-right: 1px; }
       .pill-doc-name { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .pill-doc.is-new { background: #fef3da; border-color: #f59e0b; color: #7a4500; }
+      .pill-newtag { font-size: 9px; font-weight: 800; background: #e07b00; color: #fff; padding: 1px 5px; border-radius: 6px; letter-spacing: .05em; }
+      .docgrp-lbl { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--sf-text-weaker); font-weight: 700; margin: 8px 0 5px; }
+      .docgrp:first-child .docgrp-lbl { margin-top: 2px; }
       .pill-ghost.doc-ghost {
         max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         display: inline-block; vertical-align: top;
@@ -175,6 +178,7 @@
         function docPillHTML(f) {
           return (
             '<span class="pill pill-doc' + (f.isNew ? " is-new" : "") + '" data-docpill="' + CTX.esc(f.name) + '" title="' + CTX.esc(f.name) + '">' +
+            (f.isNew ? '<span class="pill-newtag">NEW</span>' : "") +
             '<span class="file-ic file-ic--' + f.type + '">' + f.type.toUpperCase() + "</span>" +
             '<span class="pill-doc-name">' + CTX.esc(f.name) + "</span>" +
             '<span class="x" data-doc-remove="' + CTX.esc(f.name) + '" role="button" aria-label="Exclude ' + CTX.esc(f.name) + '">✕</span></span>'
@@ -185,17 +189,24 @@
           const included = CTX.includedDocs(state.scope);
           const excluded = CTX.data.files.filter((f) => state.scope.excludedDocs.has(f.name));
           const total = CTX.data.files.length;
+          const incNew = included.filter((f) => f.isNew);
+          const incOld = included.filter((f) => !f.isNew);
+          function grp(label, arr) {
+            return arr.length
+              ? '<div class="docgrp"><span class="docgrp-lbl">' + label + '</span><div class="cbar-slots has-pills">' + arr.map(docPillHTML).join("") + "</div></div>"
+              : "";
+          }
           const slots = included.length
-            ? included.map(docPillHTML).join("")
+            ? grp("New attachment", incNew) + grp("Already processed", incOld)
             : '<span class="cbar-placeholder">No documents included — add one back below.</span>';
           const addrow = excluded.length
-            ? '<div class="cbar-addrow">' + excluded.map((f) => '<button class="pill-ghost doc-ghost" data-doc-add="' + CTX.esc(f.name) + '" title="' + CTX.esc(f.name) + '">+ ' + CTX.esc(f.name) + "</button>").join("") + "</div>"
+            ? '<div class="cbar-addrow">' + excluded.map((f) => '<button class="pill-ghost doc-ghost" data-doc-add="' + CTX.esc(f.name) + '" title="' + CTX.esc(f.name) + '">+ ' + (f.isNew ? "NEW · " : "") + CTX.esc(f.name) + "</button>").join("") + "</div>"
             : "";
           return (
             '<div class="cbar-section">' +
             '<div class="cbar-section-head"><span class="cbar-label">From these documents:</span>' +
             '<span class="cbar-subcount">' + included.length + " of " + total + "</span></div>" +
-            '<div class="cbar-slots cbar-docslots' + (included.length ? " has-pills" : "") + '">' + slots + "</div>" +
+            slots +
             addrow +
             "</div>"
           );
@@ -222,7 +233,6 @@
         function render() {
           const mount = document.getElementById("cc-body");
           mount.innerHTML =
-            statusStrip() +
             '<div class="cbar-followup"><span class="ic">📎</span><span>New attachment — <em>' +
             CTX.esc(CTX.data.followup.file) + "</em> — nothing reprocessed yet.</span></div>" +
             '<div class="cbar-shell">' +
