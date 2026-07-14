@@ -39,17 +39,15 @@
     <div class="brand"><span class="bolt">⚡</span> Astrus Design Workshop</div>
     <div class="wrap">
       <h1>Underwriter-Controlled Reprocessing</h1>
-      <p class="eyebrow">Six Concepts</p>
+      <p class="eyebrow">Four Concepts</p>
       <div class="grid" id="grid"></div>
     </div>
     <script>
       var C = [
         ["01", "Checklist", "01-checklist"],
-        ["02", "Coverage Tiles", "02-coverage-tiles"],
-        ["03", "Attachment-Driven", "03-attachment-driven"],
-        ["04", "Command Bar", "04-command-bar"],
-        ["05", "Timeline", "05-timeline"],
-        ["06", "Split Board", "06-split-board"]
+        ["02", "Attachment-Driven", "02-attachment-driven"],
+        ["03", "Timeline", "03-timeline"],
+        ["04", "Guided Rail", "04-guided-rail"]
       ];
       document.getElementById("grid").innerHTML = C.map(function (c) {
         var base = "concepts/" + c[2] + "/index.html";
