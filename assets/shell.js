@@ -600,16 +600,11 @@
     };
   }
 
-  /* ---- guided tour: red notes anchored to each step's live region -------
-     Works for all three concepts by reading the DOM, not a concept-specific
-     stepper:
-       • Sequential concepts (Checklist, Timeline) render one step at a time →
-         one note on whichever step is showing.
-       • Single-surface concept (Guided Rail) renders every step at once →
-         all four notes are "just there," one per section.
-     Detection: if the Upload region AND the Scope region are on screen at the
-     same time, it's the all-at-once surface. Steps are matched in order, so the
-     Checklist's Scope step (which also shows a run-summary) reads as Scope. */
+  /* ---- guided tour: red step notes -------------------------------------
+       • Concept 1 (Checklist) & Concept 2 (Timeline) WALK one step at a time —
+         a single note follows whichever step is currently on screen.
+       • Concept 3 (Guided Rail) shows the whole flow at once — all four notes
+         are there together, each arrow pinned to its numbered rail dot. */
   function initGuidedTour() {
     const col = document.querySelector(".sf-col-right");
     const card = document.getElementById("cc");
@@ -623,28 +618,32 @@
       "<strong>Step 4 · Reprocess.</strong> Review the summary and run it. Locked lines stay untouched and the protected premium field is never overwritten."
     ];
 
-    // Each concept exposes the four steps differently; point the notes at
-    // whatever markers that concept keeps on screen at all times, so all four
-    // boxes are simply there — no clicking through to reveal them.
-    function anchors() {
-      // Guided Rail — every section is live at once; point at the regions.
+    const SEQ = [
+      ["#up-zone"],
+      [".docs-block", ".docs-note"],
+      [".cc-mode", ".line-list"],
+      [".run-summary"]
+    ];
+    function firstMatch(sels) {
+      for (let i = 0; i < sels.length; i++) {
+        const e = body.querySelector(sels[i]);
+        if (e) return e;
+      }
+      return null;
+    }
+    function resolveItems() {
+      // Guided Rail: all four at once, each pinned to its numbered dot (1–4).
       if (body.querySelector(".gr-rail")) {
-        const sels = ["#up-zone", ".docs-block", ".cc-mode", ".run-summary"];
-        return sels.map((s, i) => ({ html: HTML[i], el: body.querySelector(s) }));
+        return Array.prototype.slice
+          .call(body.querySelectorAll(".gr-node .gr-dot"))
+          .filter((d) => /^[1-4]$/.test((d.textContent || "").trim()))
+          .slice(0, 4)
+          .map((d, i) => ({ html: HTML[i], el: d, dot: true }));
       }
-      // Timeline — the four rail nodes are always visible (even collapsed).
-      if (body.querySelector(".tl-rail")) {
-        return [0, 1, 2, 3].map((i) => {
-          const btn = body.querySelector('[data-node="' + i + '"]');
-          return { html: HTML[i], el: btn ? btn.closest(".tl-node") : null };
-        });
-      }
-      // Checklist — the four stepper tiles are always visible (skip Submission).
-      if (body.querySelector(".cc-stepper")) {
-        const tiles = Array.prototype.slice
-          .call(body.querySelectorAll(".cc-stepper .cc-step"))
-          .filter((t) => !t.classList.contains("cc-step--status"));
-        return [0, 1, 2, 3].map((i) => ({ html: HTML[i], el: tiles[i] || null }));
+      // Sequential concepts: one note on the step that's rendered right now.
+      for (let i = 0; i < SEQ.length; i++) {
+        const el = firstMatch(SEQ[i]);
+        if (el) return [{ html: HTML[i], el: el, dot: false }];
       }
       return [];
     }
@@ -660,9 +659,11 @@
         if (focus) focus.style.display = "";
         return;
       }
-      const items = anchors().filter((x) => x.el);
-      // With the per-step notes present, drop the overarching focus callout.
-      if (focus) focus.style.display = items.length ? "none" : "";
+      const items = resolveItems().filter((x) => x.el);
+      // Guided Rail's four notes carry the story → hide the overarching callout.
+      // Sequential concepts keep it (the approved Concept 1 look).
+      const gr = !!body.querySelector(".gr-rail");
+      if (focus) focus.style.display = gr && items.length ? "none" : "";
       if (!items.length) return;
 
       const NS = "http://www.w3.org/2000/svg";
@@ -698,16 +699,20 @@
             note: note,
             bh: note.firstChild.offsetHeight || 80,
             // aim near the target's top-left so tall regions point at their heading
-            tx: ar.left - cr.left + Math.min(16, ar.width * 0.15),
-            ty: ar.top - cr.top + Math.min(ar.height / 2, 20)
+            tx: ar.left - cr.left + (it.dot ? ar.width / 2 : Math.min(16, ar.width * 0.15)),
+            ty: ar.top + ar.height / 2 - cr.top
           };
         })
         .sort((a, b) => a.ty - b.ty || a.tx - b.tx);
 
       let prevBottom = -Infinity;
       built.forEach((b) => {
-        let top = Math.max(6, b.ty - b.bh / 2);
-        top = Math.max(top, prevBottom + VGAP);
+        let top = b.ty - b.bh / 2;
+        if (built.length === 1) {
+          top = Math.max(kr.top - cr.top + 6, Math.min(kr.bottom - cr.top - b.bh - 6, top));
+        } else {
+          top = Math.max(Math.max(6, top), prevBottom + VGAP);
+        }
         prevBottom = top + b.bh;
         b.note.style.top = top + "px";
         const sx = left + BOX_W;
