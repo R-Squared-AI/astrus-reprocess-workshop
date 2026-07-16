@@ -63,7 +63,7 @@
         const state = { moment: 0, max: 0, err: null, scope: null, runs: [] };
         let CTX, MOUNT;
 
-        const NODE_TITLES = ["Upload attachments", "Review attachments", "Choose scope", ""];
+        const NODE_TITLES = ["Upload additional attachments", "Review attachments", "Choose what to reprocess", ""];
         function nowTitle() { return "NOW — " + CTX.finalLabel; }
 
         // gate helpers — return an error string, or null if the current node is satisfied
@@ -121,10 +121,10 @@
 
         /* ---- body content per active node -------------------------------- */
         function bodyUpload() {
-          return CTX.renderUploadStep(state.scope) + errHTML() + actions(null, "", '<button class="slds-btn slds-btn--brand" data-go="1">Next: review →</button>');
+          return CTX.renderUploadStep(state.scope, { hideTitle: true }) + errHTML() + actions(null, "", '<button class="slds-btn slds-btn--brand" data-go="1">Next: review →</button>');
         }
         function bodyReview() {
-          return CTX.renderReview(state.scope) + actions(0, "← Upload", '<button class="slds-btn slds-btn--brand" data-go="2">Next: lines →</button>');
+          return CTX.renderReview(state.scope, { hideTitle: true }) + actions(0, "← Upload", '<button class="slds-btn slds-btn--brand" data-go="2">Next: scope →</button>');
         }
         function bodyLines() {
           return (

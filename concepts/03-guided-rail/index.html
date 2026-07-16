@@ -57,19 +57,14 @@
 
         function render() {
           const mount = document.getElementById("cc-body");
-          const created = CTX.mode === "additional"
-            ? '<div class="gr-created"><strong>Submission created · ' + CTX.esc(CTX.data.sub) + "</strong> — upload any additional attachments, then reprocess.</div>"
-            : '<div class="gr-created"><strong>Communication record created</strong> — upload the attachments to process this submission.</div>';
           const uploadedOk = state.scope.uploaded.length > 0;
           const linesOk = CTX.hasSelection(state.scope);
           const rail =
             '<div class="gr-rail">' +
-            node("✓", "gr-dot--done", CTX.mode === "additional" ? "Submission" : "Communication", "Created", created) +
-            node("1", uploadedOk ? "gr-dot--done" : "gr-dot--active", "Upload attachments", uploadedOk ? "" : "", '<div>' + CTX.renderUploadStep(state.scope) + "</div>") +
-            node("2", "gr-dot--active", "Review attachments", "", CTX.renderReview(state.scope)) +
-            node("3", linesOk ? "gr-dot--done" : "gr-dot--active", "Choose what to reprocess",
-              "",
-              CTX.renderScopePicker(state.scope, { hideTitle: true })) +
+            node("✓", "gr-dot--done", "Submission created · " + CTX.esc(CTX.data.sub), "", "") +
+            node("1", uploadedOk ? "gr-dot--done" : "gr-dot--active", "Upload additional attachments", "", CTX.renderUploadStep(state.scope, { hideTitle: true })) +
+            node("2", "gr-dot--active", "Review attachments", "", CTX.renderReview(state.scope, { hideTitle: true })) +
+            node("3", linesOk ? "gr-dot--done" : "gr-dot--active", "Choose what to reprocess", "", CTX.renderScopePicker(state.scope, { hideTitle: true })) +
             node("4", "gr-dot--active", CTX.finalLabel, "",
               runSummaryHTML() +
               '<div class="cc-actions"><span class="spacer"></span><button class="slds-btn slds-btn--brand" data-run' + (CTX.canRun(state.scope) ? "" : " disabled") + ">" + CTX.finalLabel + " →</button></div>") +

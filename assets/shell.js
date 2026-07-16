@@ -80,26 +80,19 @@
      quote        : Set(lobId)  LOBs whose LOB QUOTE will update
      _just        : Set(name)   just-added (checkmark animation) */
   function newScope() {
-    return { uploaded: [], excludedDocs: new Set(), whole: false, overwriteAck: false, lob: new Set(), quote: new Set(), _just: new Set() };
+    return { uploaded: [], excludedDocs: new Set(), whole: false, overwriteAck: false, lob: new Set(), _just: new Set() };
   }
-  function lobLines() { return data.lines.filter((l) => l.kind === "lob"); }
   function alreadyProcessed() { return data.baseFiles.slice(); }
   function sampleFiles() { return data.sampleAdditional.slice(); }
   function docsInPlay(scope) { return alreadyProcessed().concat(scope.uploaded); }
   function includedDocs(scope) { return docsInPlay(scope).filter((f) => !scope.excludedDocs.has(f.name)); }
 
-  function lineChecked(scope, id) { return scope.whole || scope.lob.has(id); }
-  function quoteChecked(scope, id) { return scope.whole || scope.quote.has(id); }
-  function lineTouched(scope, l) { return lineChecked(scope, l.id) || (l.kind === "lob" && quoteChecked(scope, l.id)); }
-
   function selectedLines(scope) { return scope.whole ? data.lines.slice() : data.lines.filter((l) => scope.lob.has(l.id)); }
-  function selectedQuotes(scope) { return scope.whole ? lobLines() : lobLines().filter((l) => scope.quote.has(l.id)); }
-  function lockedLines(scope) { return scope.whole ? [] : data.lines.filter((l) => !lineTouched(scope, l)); }
-  function hasSelection(scope) { return scope.whole || scope.lob.size > 0 || scope.quote.size > 0; }
-  function selectedCount(scope) { return scope.whole ? data.lines.length : data.lines.filter((l) => lineTouched(scope, l)).length; }
+  function lockedLines(scope) { return scope.whole ? [] : data.lines.filter((l) => !scope.lob.has(l.id)); }
+  function hasSelection(scope) { return scope.whole || scope.lob.size > 0; }
+  function selectedCount(scope) { return scope.whole ? data.lines.length : scope.lob.size; }
   function hasUploads(scope) { return scope.uploaded.length > 0 || alreadyProcessed().length > 0; }
-  // Reprocess is allowed only with a real selection, and the entire-submission
-  // path additionally requires the overwrite-confirm checkbox.
+  // Reprocess needs a real selection; entire-submission also needs the overwrite ack.
   function canRun(scope) { return hasSelection(scope) && (!scope.whole || scope.overwriteAck); }
 
   const M = {
@@ -171,15 +164,15 @@
       "</div>"
     );
   }
-  function renderUploadStep(scope) {
+  function renderUploadStep(scope, opts) {
+    opts = opts || {};
     const list = scope.uploaded.length
       ? '<div class="up-list"><div class="up-list-head">New — just added</div>' +
         scope.uploaded.map((f) => uploadRow(f, scope._just.has(f.name))).join("") + "</div>"
       : "";
     return (
-      '<p class="cc-section-title">' + M.uploadTitle + "</p>" +
-      '<p class="up-note">' + alreadyProcessed().length +
-      " document(s) already on this submission (received 5/2/2026). Drag in anything new — files over 25 MB upload here directly, no email needed.</p>" +
+      (opts.hideTitle ? "" : '<p class="cc-section-title">' + M.uploadTitle + "</p>") +
+      '<p class="up-note">' + alreadyProcessed().length + " already on this submission — drag in anything new.</p>" +
       '<div class="up-zone" id="up-zone" tabindex="0" role="button" aria-label="Drag and drop attachments">' +
       '<div class="up-zone-ic">⬆</div>' +
       '<div class="up-zone-title">Drag &amp; drop attachments here</div>' +
@@ -270,7 +263,15 @@
       '<span class="doc-size">' + esc(f.size || "") + "</span></div>"
     );
   }
-  function renderReview(scope) {
+  // Review note — grounded in Josh's Jul-15 QA-findings guidance: full set required,
+  // turn off only newer-version/duplicate, AI can't tell what changed (date received
+  // is the only signal), and edit-by-hand for tiny changes.
+  const REVIEW_NOTE =
+    "The engine reads the <strong>whole set</strong> at once and cross-checks fields across every document — and it can’t tell which file is newest. " +
+    "Turn a document off <strong>only</strong> if you’ve uploaded a newer version of it, or it’s an exact duplicate (check the <strong>date received</strong>). " +
+    "Leaving an old file on, or dropping one that’s still needed, produces wrong results. Just changing a field or two? Edit it by hand instead of reprocessing.";
+  function renderReview(scope, opts) {
+    opts = opts || {};
     const already = alreadyProcessed();
     const uploaded = scope.uploaded;
     const inCount = includedDocs(scope).length;
@@ -285,13 +286,14 @@
     if (!total) {
       return '<div class="docs-block"><p class="docs-empty">No attachments yet — go back and upload some.</p></div>';
     }
+    const head = opts.hideTitle
+      ? '<div class="docs-head"><span class="docs-count">' + inCount + " of " + total + " included</span></div>"
+      : '<div class="docs-head"><strong>Review attachments</strong><span class="docs-count">' + inCount + " of " + total + " included</span></div>";
     return (
-      '<div class="docs-note"><span class="docs-note-ic">⚠️</span><span>Only turn off documents that are <strong>exact or older versions</strong> of the newly uploaded ones (check the <strong>date received</strong>). Every other document is needed to cross-reference, calculate and produce all fields.</span></div>' +
-      '<div class="docs-block">' +
-      '<div class="docs-head"><strong>Review attachments</strong><span class="docs-count">' + inCount + " of " + total + " included</span></div>" +
+      '<div class="docs-note"><span class="docs-note-ic">⚠️</span><span>' + REVIEW_NOTE + "</span></div>" +
+      '<div class="docs-block">' + head +
       group("New — uploaded", uploaded) +
       group("Already processed", already) +
-      '<p class="docs-foot">Turning a document off removes it from <strong>this reprocess only</strong> — the file stays on the record. Nothing is deleted; only an admin can permanently delete an intake file.</p>' +
       "</div>"
     );
   }
@@ -301,22 +303,18 @@
     const n = selectedCount(scope);
     return '<span class="cc-count' + (n === 0 ? " none" : "") + '">' + n + " of " + data.lines.length + " lines</span>";
   }
-  function scopeRow(scope, l) {
-    const lineOn = lineChecked(scope, l.id);
-    const quoteOn = quoteChecked(scope, l.id);
+  function forcedRow(l) {
     const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
-    const lineBox =
-      '<button class="ck-check' + (lineOn ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + lineOn + '" aria-label="Update ' + esc(l.label) + '">' + (lineOn ? "✓" : "") + "</button>";
-    const quoteCell = l.kind === "lob"
-      ? '<button class="ck-check' + (quoteOn ? " on" : "") + '" data-quote="' + l.id + '" aria-pressed="' + quoteOn + '" aria-label="Update quote for ' + esc(l.label) + '">' + (quoteOn ? "✓" : "") + "</button>"
-      : '<span class="scope-na" aria-hidden="true">—</span>';
-    const touched = lineTouched(scope, l);
+    return '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + esc(l.label) + tag + '</span><span class="line-state">Will populate ✓</span></div>';
+  }
+  function lineRowHTML(scope, l) {
+    const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
+    const on = scope.lob.has(l.id);
     return (
-      '<div class="scope-row' + (touched ? " on" : " locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
-      '<span class="scope-name">' + esc(l.label) + tag + (touched ? "" : ' <span class="scope-lock">' + M.offLabel + "</span>") + "</span>" +
-      '<span class="scope-cell">' + lineBox + "</span>" +
-      '<span class="scope-cell">' + quoteCell + "</span>" +
-      "</div>"
+      '<div class="line-row ' + (on ? "on" : "locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
+      '<button class="ck-check' + (on ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + on + '" aria-label="Update ' + esc(l.label) + '">' + (on ? "✓" : "") + "</button>" +
+      '<span class="line-name">' + esc(l.label) + tag + "</span>" +
+      '<span class="line-state">' + (on ? "Will populate" : M.offLabel) + "</span></div>"
     );
   }
   function renderScopePicker(scope, opts) {
@@ -324,34 +322,20 @@
     const titleRow = opts.hideTitle
       ? '<div class="cc-title-row"><span></span>' + countChip(scope) + "</div>"
       : '<div class="cc-title-row"><p class="cc-section-title">Choose what to reprocess</p>' + countChip(scope) + "</div>";
-    const forced =
-      '<div class="line-list">' +
-      data.lines.map((l) =>
-        '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + esc(l.label) +
-        (l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "") +
-        '</span><span class="line-state">' + (l.kind === "lob" ? "Line + quote " : "Will update ") + "✓</span></div>"
-      ).join("") + "</div>";
-    const grid =
-      '<div class="scope-grid">' +
-      '<div class="scope-grid-head"><span>Line of business</span><span>Update line</span><span>Update quote</span></div>' +
-      data.lines.map((l) => scopeRow(scope, l)).join("") +
-      '<p class="scope-grid-foot">“Update line” rewrites that line and its exposures, schedules, rates and losses. “Update quote” rewrites the LOB Quote (coverages, limits). Leave a box off and that data is left exactly as it is.</p>' +
-      "</div>";
+    const list = scope.whole
+      ? '<div class="line-list">' + data.lines.map(forcedRow).join("") + "</div>"
+      : '<div class="line-list">' + data.lines.map((l) => lineRowHTML(scope, l)).join("") + "</div>";
     return (
       titleRow +
       '<div class="cc-mode">' +
-      '<div class="cc-mode-opt' + (scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span>' +
-      '<div><div class="cc-mode-title">Entire submission (' + data.lines.length + ")</div>" +
-      '<div class="cc-mode-desc">Overwrite every line and every quote with the new extraction.</div></div></div>' +
+      '<div class="cc-mode-opt' + (scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span><div class="cc-mode-title">Entire submission (' + data.lines.length + ")</div></div>" +
       (scope.whole
         ? '<label class="ovr-ack' + (scope.overwriteAck ? " on" : "") + '" data-ovr><span class="ovr-box">' + (scope.overwriteAck ? "✓" : "") + "</span>" +
-          "<span>Yes — overwrite all " + data.lines.length + " lines and their quotes. Hand-entered values on those lines will be replaced. This can’t be undone.</span></label>"
+          "<span>Yes — overwrite all " + data.lines.length + " lines. Hand-entered values will be replaced.</span></label>"
         : "") +
-      '<div class="cc-mode-opt' + (!scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span>' +
-      '<div><div class="cc-mode-title">Only the lines I choose</div>' +
-      '<div class="cc-mode-desc">Pick each line — and each quote — to update. Everything else stays locked.</div></div></div>' +
+      '<div class="cc-mode-opt' + (!scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span><div class="cc-mode-title">Only the lines I choose</div></div>' +
       "</div>" +
-      (scope.whole ? forced : grid)
+      list
     );
   }
   function bindScopePicker(root, scope, rerender) {
@@ -368,11 +352,6 @@
       scope.lob.has(id) ? scope.lob.delete(id) : scope.lob.add(id);
       rerender();
     }));
-    root.querySelectorAll("[data-quote]").forEach((b) => (b.onclick = () => {
-      const id = b.dataset.quote;
-      scope.quote.has(id) ? scope.quote.delete(id) : scope.quote.add(id);
-      rerender();
-    }));
   }
 
   /* ---- run summary ----------------------------------------------------- */
@@ -381,13 +360,11 @@
     const lines = [];
     lines.push({ kind: "docs", text: "Reads " + inDocs.length + " of " + docsInPlay(scope).length + " attachments." });
     if (scope.whole) {
-      lines.push({ kind: "populate", text: "Overwrites all " + data.lines.length + " lines and their quotes." });
+      lines.push({ kind: "populate", text: "Overwrites all " + data.lines.length + " lines." });
     } else {
       const recs = selectedLines(scope);
-      const qs = selectedQuotes(scope);
       const locked = lockedLines(scope);
-      if (recs.length) lines.push({ kind: "populate", text: "Updates " + recs.map((l) => l.label).join(", ") + "." });
-      if (qs.length) lines.push({ kind: "quote", text: "Updates the quote for " + qs.map((l) => l.label).join(", ") + "." });
+      if (recs.length) lines.push({ kind: "populate", text: "Populates " + recs.map((l) => l.label).join(", ") + "." });
       if (locked.length) lines.push({ kind: "lock", text: "Locked (untouched): " + locked.map((l) => l.label).join(", ") + "." });
     }
     lines.push({ kind: "protect", text: data.protectedField + " is never overwritten." });
@@ -431,17 +408,15 @@
     }
     const inDocs = includedDocs(scope);
     const recs = selectedLines(scope);
-    const qs = selectedQuotes(scope);
     let body;
     if (scope.whole) {
       body = "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
-        "</strong> and <strong>overwrites all " + data.lines.length + " lines and their quotes</strong>.</p>" +
+        "</strong> and <strong>overwrites all " + data.lines.length + " lines</strong>.</p>" +
         "<p>Hand-entered values on every line will be replaced.</p>";
     } else {
-      const recTxt = recs.length ? esc(recs.map((l) => l.label).join(", ")) : "no line records";
-      const qTxt = qs.length ? esc(qs.map((l) => l.label).join(", ")) : "no quotes";
-      body = "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") + "</strong>.</p>" +
-        "<p>Updates lines: <strong>" + recTxt + "</strong>.<br/>Updates quotes: <strong>" + qTxt + "</strong>.</p>" +
+      const recTxt = recs.length ? esc(recs.map((l) => l.label).join(", ")) : "the selected lines";
+      body = "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
+        "</strong> and populates <strong>" + recTxt + "</strong>.</p>" +
         "<p>Every other line stays locked.</p>";
     }
     body += "<p><strong>" + esc(data.protectedField) + "</strong> is protected and won’t be overwritten. This can’t be undone.</p>";
@@ -587,17 +562,12 @@
       offLabel: M.offLabel,
       verb: M.verb,
       newScope: newScope,
-      lobLines: lobLines,
       alreadyProcessed: alreadyProcessed,
       sampleFiles: sampleFiles,
       docsInPlay: docsInPlay,
       includedDocs: includedDocs,
       selectedLines: selectedLines,
-      selectedQuotes: selectedQuotes,
       lockedLines: lockedLines,
-      lineChecked: lineChecked,
-      quoteChecked: quoteChecked,
-      lineTouched: lineTouched,
       selectedCount: selectedCount,
       countChip: countChip,
       hasSelection: hasSelection,
