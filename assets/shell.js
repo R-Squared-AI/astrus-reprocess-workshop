@@ -487,7 +487,7 @@
   function chromeHTML(conceptName) {
     const d = data;
     return (
-      '<a class="wk-back" href="../../index.html" aria-label="Back to all options">← All options</a>' +
+      '<a class="wk-back" href="../../index.html" aria-label="Back to home">← Back to Home</a>' +
       '<div class="proto-ribbon"><span>Astrus prototype</span><span class="dot">•</span>' +
       "<span><strong>" + esc(conceptName) + " · Reprocess</strong></span><span class=\"dot\">•</span>" +
       '<a href="../../index.html">← All options</a><span class="dot">•</span>' +
@@ -600,100 +600,129 @@
     };
   }
 
-  /* ---- guided tour: a red note per step, anchored to the live region ----
-     Watches #cc-body, reads which step is current from the stepper, and points
-     a red callout at that step's area. The notes are just "there" on whatever
-     step is showing — no sequential reveal. */
+  /* ---- guided tour: red notes anchored to each step's live region -------
+     Works for all three concepts by reading the DOM, not a concept-specific
+     stepper:
+       • Sequential concepts (Checklist, Timeline) render one step at a time →
+         one note on whichever step is showing.
+       • Single-surface concept (Guided Rail) renders every step at once →
+         all four notes are "just there," one per section.
+     Detection: if the Upload region AND the Scope region are on screen at the
+     same time, it's the all-at-once surface. Steps are matched in order, so the
+     Checklist's Scope step (which also shows a run-summary) reads as Scope. */
   function initGuidedTour() {
     const col = document.querySelector(".sf-col-right");
     const card = document.getElementById("cc");
     const body = document.getElementById("cc-body");
     if (!col || !card || !body) return;
 
-    const STEPS = {
-      Upload: {
-        sel: ["#up-zone"],
-        html:
-          "<strong>Step 1 · Upload.</strong> Here’s where underwriters add the extra attachments the broker sent. Go ahead and add one with “add sample files” — it’s a mock, nothing really uploads."
-      },
-      Review: {
-        sel: [".docs-block", ".docs-note"],
-        html:
-          "<strong>Step 2 · Review.</strong> You’ll see the attachment you just added next to the files already processed with the original submission. Turn a file off only if it’s a newer version or an exact duplicate — the note above explains it."
-      },
-      Scope: {
-        sel: [".cc-mode", ".line-list"],
-        html:
-          "<strong>Step 3 · Scope (the checklist).</strong> Choose which lines of business or sections to reprocess — pick only what you want updated so you don’t overwrite the values you already entered by hand."
-      },
-      Reprocess: {
-        sel: [".run-summary"],
-        html:
-          "<strong>Step 4 · Reprocess.</strong> Review the summary and run it. Locked lines stay untouched and the protected premium field is never overwritten."
-      }
-    };
+    const HTML = [
+      "<strong>Step 1 · Upload.</strong> Here’s where underwriters add the extra attachments the broker sent. Go ahead and add one with “add sample files” — it’s a mock, nothing really uploads.",
+      "<strong>Step 2 · Review.</strong> You’ll see the attachment you just added next to the files already processed with the original submission. Turn a file off only if it’s a newer version or an exact duplicate.",
+      "<strong>Step 3 · Scope (the checklist).</strong> Choose which lines of business or sections to reprocess — pick only what you want updated so you don’t overwrite the values you already entered by hand.",
+      "<strong>Step 4 · Reprocess.</strong> Review the summary and run it. Locked lines stay untouched and the protected premium field is never overwritten."
+    ];
 
-    function currentLabel() {
-      const el = body.querySelector(".cc-step.is-current .cc-step-label");
-      return el ? el.textContent.trim() : null;
-    }
-    function firstMatch(sels) {
-      for (let i = 0; i < sels.length; i++) {
-        const e = body.querySelector(sels[i]);
-        if (e) return e;
+    // Each concept exposes the four steps differently; point the notes at
+    // whatever markers that concept keeps on screen at all times, so all four
+    // boxes are simply there — no clicking through to reveal them.
+    function anchors() {
+      // Guided Rail — every section is live at once; point at the regions.
+      if (body.querySelector(".gr-rail")) {
+        const sels = ["#up-zone", ".docs-block", ".cc-mode", ".run-summary"];
+        return sels.map((s, i) => ({ html: HTML[i], el: body.querySelector(s) }));
       }
-      return null;
-    }
-    function ensureNote() {
-      let n = col.querySelector(".tour-note");
-      if (!n) {
-        n = document.createElement("div");
-        n.className = "tour-note";
-        n.setAttribute("aria-hidden", "true");
-        n.innerHTML =
-          '<div class="tour-note-box"></div>' +
-          '<svg class="tour-note-arrow" width="64" height="40" viewBox="0 0 64 40" fill="none">' +
-          '<defs><marker id="tourArrowHead" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">' +
-          '<path d="M0,0 L7,3.2 L0,6.4 Z" fill="#e11d1d"></path></marker></defs>' +
-          '<path d="M4,20 C26,20 34,20 56,20" stroke="#e11d1d" stroke-width="5" stroke-linecap="round" marker-end="url(#tourArrowHead)"></path>' +
-          "</svg>";
-        col.appendChild(n);
+      // Timeline — the four rail nodes are always visible (even collapsed).
+      if (body.querySelector(".tl-rail")) {
+        return [0, 1, 2, 3].map((i) => {
+          const btn = body.querySelector('[data-node="' + i + '"]');
+          return { html: HTML[i], el: btn ? btn.closest(".tl-node") : null };
+        });
       }
-      return n;
+      // Checklist — the four stepper tiles are always visible (skip Submission).
+      if (body.querySelector(".cc-stepper")) {
+        const tiles = Array.prototype.slice
+          .call(body.querySelectorAll(".cc-stepper .cc-step"))
+          .filter((t) => !t.classList.contains("cc-step--status"));
+        return [0, 1, 2, 3].map((i) => ({ html: HTML[i], el: tiles[i] || null }));
+      }
+      return [];
     }
+
+    function clearOverlay() {
+      col.querySelectorAll(".tour-note, .tour-arrows").forEach((n) => n.remove());
+    }
+
     function update() {
-      const label = currentLabel();
-      const step = label && STEPS[label];
-      const existing = col.querySelector(".tour-note");
-      if (!step || !window.matchMedia("(min-width: 941px)").matches) {
-        if (existing) existing.style.display = "none";
+      clearOverlay();
+      const focus = col.querySelector(".focus-callout");
+      if (!window.matchMedia("(min-width: 941px)").matches) {
+        if (focus) focus.style.display = "";
         return;
       }
-      const anchor = firstMatch(step.sel);
-      if (!anchor) {
-        if (existing) existing.style.display = "none";
-        return;
-      }
-      const note = ensureNote();
-      note.style.display = "";
-      note.querySelector(".tour-note-box").innerHTML = step.html;
-      const BOX_W = 250, GAP = 64;
+      const items = anchors().filter((x) => x.el);
+      // With the per-step notes present, drop the overarching focus callout.
+      if (focus) focus.style.display = items.length ? "none" : "";
+      if (!items.length) return;
+
+      const NS = "http://www.w3.org/2000/svg";
       const cr = col.getBoundingClientRect();
       const kr = card.getBoundingClientRect();
-      const ar = anchor.getBoundingClientRect();
-      note.style.width = BOX_W + "px";
-      note.style.left = kr.left - cr.left - BOX_W - GAP + "px";
-      const bh = note.querySelector(".tour-note-box").offsetHeight || 80;
-      // Target = the anchor's vertical centre (in column coords).
-      const targetY = ar.top + ar.height / 2 - cr.top;
-      // Place the box centred on the target, but keep it inside the card.
-      let boxTop = targetY - bh / 2;
-      boxTop = Math.max(kr.top - cr.top + 6, Math.min(kr.bottom - cr.top - bh - 6, boxTop));
-      note.style.top = boxTop + "px";
-      // Arrow points exactly at the target regardless of where the box landed.
-      const arrow = note.querySelector(".tour-note-arrow");
-      arrow.style.left = BOX_W + "px";
-      arrow.style.top = targetY - boxTop + "px";
+      const BOX_W = 244, GAP = 60, VGAP = 12;
+      const left = kr.left - cr.left - BOX_W - GAP;
+
+      // One SVG overlay behind the boxes carries every arrow, so each can reach
+      // its target wherever it sits (a stacked rail, a section, a stepper tile).
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("class", "tour-arrows");
+      svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:58;";
+      svg.setAttribute("width", col.clientWidth);
+      svg.setAttribute("height", col.scrollHeight);
+      svg.innerHTML =
+        '<defs><marker id="tourArrowHead" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">' +
+        '<path d="M0,0 L7,3.2 L0,6.4 Z" fill="#e11d1d"></path></marker></defs>';
+      col.appendChild(svg);
+
+      const built = items
+        .map((it) => {
+          const note = document.createElement("div");
+          note.className = "tour-note";
+          note.setAttribute("aria-hidden", "true");
+          note.innerHTML = '<div class="tour-note-box">' + it.html + "</div>";
+          note.style.width = BOX_W + "px";
+          note.style.left = left + "px";
+          note.style.top = "0px";
+          col.appendChild(note);
+          const ar = it.el.getBoundingClientRect();
+          return {
+            note: note,
+            bh: note.firstChild.offsetHeight || 80,
+            // aim near the target's top-left so tall regions point at their heading
+            tx: ar.left - cr.left + Math.min(16, ar.width * 0.15),
+            ty: ar.top - cr.top + Math.min(ar.height / 2, 20)
+          };
+        })
+        .sort((a, b) => a.ty - b.ty || a.tx - b.tx);
+
+      let prevBottom = -Infinity;
+      built.forEach((b) => {
+        let top = Math.max(6, b.ty - b.bh / 2);
+        top = Math.max(top, prevBottom + VGAP);
+        prevBottom = top + b.bh;
+        b.note.style.top = top + "px";
+        const sx = left + BOX_W;
+        const sy = top + b.bh / 2;
+        const c1 = sx + (b.tx - sx) * 0.45;
+        const c2 = sx + (b.tx - sx) * 0.62;
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("d", "M" + sx + "," + sy + " C" + c1 + "," + sy + " " + c2 + "," + b.ty + " " + b.tx + "," + b.ty);
+        path.setAttribute("stroke", "#e11d1d");
+        path.setAttribute("stroke-width", "5");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("fill", "none");
+        path.setAttribute("marker-end", "url(#tourArrowHead)");
+        svg.appendChild(path);
+      });
     }
     let raf = 0;
     function schedule() {

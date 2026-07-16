@@ -664,30 +664,38 @@ body {
   overflow: visible;
 }
 
-/* Persistent "back to all options" button on every concept page */
+/* Big, always-visible "back to home" button on every concept page */
 .wk-back {
   position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 200;
+  left: 20px;
+  bottom: 20px;
+  z-index: 1000;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  background: #032d60;
+  gap: 10px;
+  background: #e11d1d;
   color: #fff;
   font-family: var(--sf-font);
-  font-weight: 700;
-  font-size: 13px;
-  padding: 10px 16px;
-  border-radius: 999px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+  padding: 16px 28px;
+  border-radius: 14px;
+  border: 2px solid #fff;
   text-decoration: none;
-  box-shadow: 0 8px 22px rgba(3, 45, 96, 0.38);
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(225, 29, 29, 0.5);
+  transition: background 0.12s ease, transform 0.1s ease;
 }
 .wk-back:hover {
-  background: #0b3f7a;
+  background: #c31616;
+  transform: translateY(-1px);
+}
+.wk-back:active {
+  transform: translateY(0);
 }
 .wk-back:focus-visible {
-  outline: 2px solid var(--sf-brand-accent);
+  outline: 3px solid #fff;
   outline-offset: 2px;
 }
 
