@@ -16,20 +16,20 @@ reprocess may touch (premium and hand-entered data protected).
 
 The engine logic is **already built** (RFC `reprocess_control_and_com_file_linking_rfc`
 + the Jul-13 underwriter workshop). These prototypes only explore how underwriters
-*drive* it. Round 1 = five genuinely different interaction models.
+*drive* it. Narrowed to **three options** — same flow and rules, three surfaces.
 
-## The concepts
+## The three options
 
-| # | Concept | Interaction model |
-|---|---------|-------------------|
-| 01 | **Checkbox Matrix** | The RFC mockup, polished — two checkbox columns + live "what this run will do" |
-| 02 | **Control Deck** | One tactile card per line with a physical toggle switch |
-| 03 | **Guided Review** | A wizard ending in an explicit change/stays/protected diff |
-| 04 | **Smart Panel** | One glanceable surface — scope as chips, one sentence, one button |
-| 05 | **Submission Timeline** | The submission's life story; control lives at the "now" point |
+| # | Option | Interaction model |
+|---|--------|-------------------|
+| 01 | **Option 1 · Checklist** | A clean, linear checklist — step through Upload → Review → Lines, tick lines, reprocess. The frontrunner. |
+| 02 | **Option 2 · Timeline** | The submission's life story on a vertical rail; you act at the NOW point, past reprocesses stay logged as an audit record. |
+| 03 | **Option 3 · Guided Rail** | Every step on one scrolling surface, tied together by a guided rail — nothing hidden behind a Next button. |
 
-Each concept steps through the full journey: follow-up bell → square up files →
-scope the reprocess → run & confirm.
+There is one flow — **Reprocess**. A submission already exists, new attachments
+have landed on the Communication, and the underwriter steps through
+**Upload → Review → Lines → Reprocess**. (The earlier "New submission" entry and
+the Attachment-Driven concept were removed.)
 
 ## Notes
 

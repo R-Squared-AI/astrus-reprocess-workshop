@@ -1,17 +1,19 @@
 /* ============================================================================
-   Astrus Reprocess Workshop — shared engine (Round 7: upload flow, dual mode)
+   Astrus Reprocess Workshop — shared engine (reprocess-only)
    No more emails: underwriters drag-and-drop attachments into the Communication.
-   Two modes (from ?mode=):
-     initial    — Communication just created, no submission yet → Process submission
-     additional — Submission exists → upload more, review, Reprocess
-   Flow (both): Upload → Review → Lines → Process/Reprocess, over a faithful,
-   non-interactive Salesforce page. Drag-drop is a demo (checkmark animation, no
-   real upload). Pre-extraction: only file names + which are new are known.
+   The "New submission" entry was removed — the only flow is Reprocess: a
+   submission already exists, new attachments have landed, and the underwriter
+   decides which documents and which lines to reprocess.
+   Flow: Upload → Review → Lines → Reprocess, over a faithful, non-interactive
+   Salesforce page. Drag-drop is a demo (checkmark animation, no real upload).
+   MODE is pinned to "additional"; the string is kept so the existing
+   mode-aware helpers below need no rewiring.
    ============================================================================ */
 (function () {
   "use strict";
 
-  let MODE = /mode=additional/.test(location.search) ? "additional" : "initial";
+  // New Submission removed: reprocess is the only flow. Any ?mode= is ignored.
+  let MODE = "additional";
 
   const data = {
     com: "COM-0022689",
@@ -420,7 +422,7 @@
     const filesCount = MODE === "additional" ? d.baseFiles.length : 0;
     return (
       '<div class="proto-ribbon"><span>Astrus prototype</span><span class="dot">•</span>' +
-      "<span><strong>" + esc(conceptName) + " · " + (MODE === "additional" ? "Reprocess" : "New submission") + "</strong></span><span class=\"dot\">•</span>" +
+      "<span><strong>" + esc(conceptName) + " · Reprocess</strong></span><span class=\"dot\">•</span>" +
       '<a href="../../index.html">← All concepts</a><span class="dot">•</span>' +
       "<span>Salesforce chrome is a non-clickable mock; only the AI Engine Status card responds.</span></div>" +
       '<div class="sf-globalnav">' +
@@ -481,31 +483,6 @@
     const badgeMount = document.querySelector(".cc-badge-mount");
     if (badgeMount) badgeMount.innerHTML = statusBadge();
     const mount = document.getElementById("cc-body");
-    // New submission = simple: just Upload → Process (no review, no line picking).
-    if (MODE === "initial") {
-      const scope = newScope();
-      let initErr = null;
-      function renderInit() {
-        mount.innerHTML =
-          bannerHTML() +
-          renderUploadStep(scope) +
-          '<div class="cc-initnote">Astrus reads every uploaded attachment and creates the submission — <strong>all lines of business</strong> at once. You fine-tune individual lines later by reprocessing.</div>' +
-          (initErr ? '<div class="cc-err">⚠ ' + esc(initErr) + "</div>" : "") +
-          '<div class="cc-actions"><span class="spacer"></span><button class="slds-btn slds-btn--brand" id="cc-init-run">Process submission →</button></div>';
-        bindUploadStep(mount, scope, function () { initErr = null; renderInit(); });
-        const b = mount.querySelector("#cc-init-run");
-        if (b) b.onclick = async () => {
-          const e = uploadError(scope);
-          if (e) { initErr = e; renderInit(); return; }
-          initErr = null;
-          const ok = await runProcess(scope);
-          if (ok) { scope.uploaded = []; renderInit(); }
-        };
-      }
-      renderInit();
-      document.title = "Astrus New Submission · " + conceptName;
-      return;
-    }
     const ctx = {
       mode: MODE,
       data: data,
@@ -541,7 +518,7 @@
       statusBadge: statusBadge
     };
     concept.render(mount, ctx);
-    document.title = "Astrus " + (MODE === "additional" ? "Reprocess" : "New Submission") + " · " + conceptName;
+    document.title = "Astrus Reprocess · " + conceptName;
   }
 
   window.ASTRUS = { data: data, mode: MODE, esc: esc, toast: toast, confirmModal: confirmModal, newScope: newScope, boot: boot };

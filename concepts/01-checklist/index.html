@@ -113,7 +113,7 @@
           if (rp) rp.onclick = async () => { const ok = await CTX.runProcess(state.scope); if (ok) { state.scope = ASTRUS.newScope(); state.max = 0; go(0); } };
         }
 
-        window.CONCEPT = { name: "Checklist", render: function (mount, ctx) { CTX = ctx; render(); } };
+        window.CONCEPT = { name: "Option 1 · Checklist", render: function (mount, ctx) { CTX = ctx; render(); } };
         ASTRUS.boot(window.CONCEPT);
       })();
     </script>
