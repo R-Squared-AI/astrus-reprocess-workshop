@@ -34,11 +34,12 @@
     owner: "Astrus AI Integration User",
     protectedField: "Estimated / Proposed Bound Premium",
     // stat = color-coded line status (green ok / amber needs review / red error).
-    // The revised vehicle schedule lands on Commercial Auto → amber.
+    // Submission is COMPLETED — every line is green; the underwriter reprocesses
+    // on their own initiative, not because anything is flagged for review.
     lines: [
       { id: "sub", label: "Submission Details", kind: "sub", short: "Submission", stat: "green" },
       { id: "gl", label: "General Liability", kind: "lob", short: "GL", stat: "green" },
-      { id: "ca", label: "Commercial Auto", kind: "lob", short: "Auto", stat: "amber" },
+      { id: "ca", label: "Commercial Auto", kind: "lob", short: "Auto", stat: "green" },
       { id: "wc", label: "Workers' Compensation", kind: "lob", short: "WC", stat: "green" },
       { id: "xs", label: "Excess Liability", kind: "lob", short: "Excess", stat: "green" }
     ],
@@ -114,7 +115,7 @@
 
   /* ---- badge + status strip (color-coded per-line aggregation) --------- */
   function statusBadge() {
-    return '<span class="slds-badge badge-attn">📎 New attachments received</span>';
+    return '<span class="slds-badge badge-success">✓ Completed</span>';
   }
   function lineStatusRow() {
     const chips = data.lines
@@ -129,8 +130,8 @@
     return (
       '<div class="cc-status2" id="cc-status">' +
       '<div class="cc-status2-top">' +
-      '<span class="slds-badge badge-warning cc-status2-badge">Requires Review</span>' +
-      '<span class="cc-stage"><span class="cc-stage-dot"></span>Complete</span>' +
+      '<span class="slds-badge badge-success cc-status2-badge">Completed</span>' +
+      '<span class="cc-stage"><span class="cc-stage-dot"></span>All lines processed</span>' +
       "</div>" +
       '<div class="cc-status2-metrics">' +
       '<div class="csm"><span class="csm-v">5 / 5</span><span class="csm-l">Preprocessed</span></div>' +
@@ -146,8 +147,8 @@
   function bannerHTML() {
     return (
       '<div class="cc-banner"><span class="cc-banner-ic">✓</span>' +
-      "<div><strong>Submission created · " + esc(data.sub) + "</strong>" +
-      "<span>A follow-up email added new attachments. Review and reprocess when you're ready.</span></div></div>"
+      "<div><strong>Submission completed · " + esc(data.sub) + "</strong>" +
+      "<span>This submission has finished processing. Upload attachments and reprocess specific lines below only when you need to.</span></div></div>"
     );
   }
 
@@ -550,9 +551,9 @@
   function renderGate(mount, onOpen) {
     mount.innerHTML =
       '<div class="cc-gate">' +
-      '<div class="cc-gate-head"><span class="cc-gate-ic">📎</span>' +
-      "<div><strong>New attachments received</strong>" +
-      "<span>A follow-up email added files to this Communication. Nothing has been reprocessed — that’s always your call.</span></div></div>" +
+      '<div class="cc-gate-head"><span class="cc-gate-ic">✓</span>' +
+      "<div><strong>Submission completed</strong>" +
+      "<span>This submission has finished processing. You can upload attachments and reprocess specific lines whenever you need to — nothing runs until you choose.</span></div></div>" +
       '<button class="slds-btn slds-btn--brand cc-gate-btn" id="cc-open" type="button">Reprocessing options →</button>' +
       '<p class="cc-gate-foot">Opens the guided reprocess panel. No line is touched until you review the files, choose the scope, and confirm.</p>' +
       "</div>";

@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Astrus · Guided Rail</title>
-    <link rel="stylesheet" href="../../assets/shell.css?v=8" />
-    <link rel="stylesheet" href="../../assets/cc.css?v=8" />
+    <link rel="stylesheet" href="../../assets/shell.css?v=9" />
+    <link rel="stylesheet" href="../../assets/cc.css?v=9" />
     <style>
       /* Guided Rail — a hybrid: the Timeline's rail, the Attachment-Driven
          single surface (every step visible, upload-led), and the Checklist's
@@ -33,7 +33,7 @@
   </head>
   <body>
     <noscript>This interactive concept needs JavaScript.</noscript>
-    <script src="../../assets/shell.js?v=8"></script>
+    <script src="../../assets/shell.js?v=9"></script>
     <script>
       (function () {
         const state = { scope: ASTRUS.newScope() };
@@ -64,7 +64,7 @@
           const linesOk = CTX.hasSelection(state.scope);
           const rail =
             '<div class="gr-rail">' +
-            node("✓", "gr-dot--done", "Submission created · " + CTX.esc(CTX.data.sub), "", "") +
+            node("✓", "gr-dot--done", "Submission completed · " + CTX.esc(CTX.data.sub), "", "") +
             node("1", uploadedOk ? "gr-dot--done" : "gr-dot--active", "Upload additional attachments", "", CTX.renderUploadStep(state.scope, { hideTitle: true })) +
             node("2", "gr-dot--active", "Review attachments", "", CTX.renderReview(state.scope, { hideTitle: true })) +
             node("3", linesOk ? "gr-dot--done" : "gr-dot--active", "Choose what to reprocess", "", CTX.renderScopePicker(state.scope, { hideTitle: true })) +
