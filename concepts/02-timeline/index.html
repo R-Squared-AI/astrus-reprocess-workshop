@@ -63,7 +63,7 @@
         const state = { moment: 0, max: 0, err: null, scope: null, runs: [] };
         let CTX, MOUNT;
 
-        const NODE_TITLES = ["Upload attachments", "Review attachments", "Choose lines", ""];
+        const NODE_TITLES = ["Upload attachments", "Review attachments", "Choose scope", ""];
         function nowTitle() { return "NOW — " + CTX.finalLabel; }
 
         // gate helpers — return an error string, or null if the current node is satisfied
@@ -93,20 +93,6 @@
             .map((l) => '<div class="run-line run-line--' + l.kind + '"><span class="rl-ic">' + (icon[l.kind] || "•") + "</span><span>" + CTX.esc(l.text) + "</span></div>")
             .join("");
           return '<div class="run-summary' + (empty ? " is-empty" : "") + '">' + (empty ? '<p class="cc-hint" style="margin:0">Pick a line, or the entire submission.</p>' : lines) + "</div>";
-        }
-
-        function lineRow(l) {
-          const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
-          if (state.scope.whole) {
-            return '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + CTX.esc(l.label) + tag + '</span><span class="line-state">Will ' + CTX.verb.toLowerCase() + " ✓</span></div>";
-          }
-          const on = state.scope.lob.has(l.id);
-          return (
-            '<div class="line-row ' + (on ? "on" : "locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
-            '<button class="ck-check' + (on ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + on + '">' + (on ? "✓" : "") + "</button>" +
-            '<span class="line-name">' + CTX.esc(l.label) + tag + "</span>" +
-            '<span class="line-state">' + (on ? "Will " + CTX.verb.toLowerCase() : CTX.offLabel) + "</span></div>"
-          );
         }
 
         /* ---- collapsed summary text for a done node -------------------- */
@@ -141,22 +127,15 @@
           return CTX.renderReview(state.scope) + actions(0, "← Upload", '<button class="slds-btn slds-btn--brand" data-go="2">Next: lines →</button>');
         }
         function bodyLines() {
-          const rows = CTX.data.lines.map(lineRow).join("");
           return (
-            '<div class="cc-title-row"><span></span>' + countChip() + "</div>" +
-            '<div class="cc-mode">' +
-            '<div class="cc-mode-opt' + (state.scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span><div class="cc-mode-title">Entire submission (' + CTX.data.lines.length + ")</div></div>" +
-            '<div class="cc-mode-opt' + (!state.scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span><div class="cc-mode-title">Only chosen lines</div></div>' +
-            "</div>" +
-            '<div class="line-list">' + rows + "</div>" +
-            errHTML() +
+            CTX.renderScopePicker(state.scope, { hideTitle: true }) + errHTML() +
             actions(1, "← Review", '<button class="slds-btn slds-btn--brand" data-go="3">Next →</button>')
           );
         }
         function bodyNow() {
           return (
             runSummaryHTML() +
-            actions(2, "← Lines", '<button class="slds-btn slds-btn--brand" data-run' + (!CTX.hasSelection(state.scope) || !CTX.hasUploads(state.scope) ? " disabled" : "") + ">" + CTX.esc(CTX.finalLabel) + "</button>")
+            actions(2, "← Scope", '<button class="slds-btn slds-btn--brand" data-run' + (CTX.canRun(state.scope) ? "" : " disabled") + ">" + CTX.esc(CTX.finalLabel) + "</button>")
           );
         }
         const BODIES = [bodyUpload, bodyReview, bodyLines, bodyNow];
@@ -244,12 +223,7 @@
             state.scope.excludedDocs.has(n) ? state.scope.excludedDocs.delete(n) : state.scope.excludedDocs.add(n);
             render();
           }));
-          rail.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { state.scope.whole = b.dataset.mode === "whole"; render(); }));
-          rail.querySelectorAll("[data-line]").forEach((b) => (b.onclick = () => {
-            const id = b.dataset.line;
-            state.scope.lob.has(id) ? state.scope.lob.delete(id) : state.scope.lob.add(id);
-            render();
-          }));
+          CTX.bindScopePicker(rail, state.scope, render);
           const rp = rail.querySelector("[data-run]");
           if (rp) rp.onclick = async () => {
             const sel = CTX.selectedLines(state.scope);

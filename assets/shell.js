@@ -1,19 +1,25 @@
 /* ============================================================================
    Astrus Reprocess Workshop — shared engine (reprocess-only)
-   No more emails: underwriters drag-and-drop attachments into the Communication.
-   The "New submission" entry was removed — the only flow is Reprocess: a
-   submission already exists, new attachments have landed, and the underwriter
-   decides which documents and which lines to reprocess.
-   Flow: Upload → Review → Lines → Reprocess, over a faithful, non-interactive
-   Salesforce page. Drag-drop is a demo (checkmark animation, no real upload).
-   MODE is pinned to "additional"; the string is kept so the existing
-   mode-aware helpers below need no rewiring.
+   No emails: a submission already exists, a follow-up dropped new attachments on
+   the Communication, and the underwriter decides WHEN and WHAT to reprocess.
+   Nothing fires automatically.
+
+   Everything the Jul workshop asked for lives here so all three options inherit
+   it identically:
+     • Gated entry — the panel is hidden behind ONE "Reprocessing options" button.
+     • Upload — drag-drop + browse + PASTE-TEXT (email body that isn't a file).
+       New files sit at the top; every file shows a DATE RECEIVED.
+     • Review — toggle off only exact/older versions; turning a doc off REMOVES IT
+       FROM THE RECORD for this run (nothing is deleted).
+     • Scope — per-LOB AND per-LOB-Quote checkboxes (RFC D6). "Entire submission"
+       requires an explicit OVERWRITE-CONFIRM checkbox (delete-style friction).
+       Unpicked lines stay LOCKED; hand-entered work is preserved.
+     • Protected — Estimated / Proposed Bound Premium is never overwritten (D7).
+     • Status — color-coded per-line aggregation (green / amber / red).
+   Flow: Upload → Review → Scope → Reprocess, over a non-interactive SF page.
    ============================================================================ */
 (function () {
   "use strict";
-
-  // New Submission removed: reprocess is the only flow. Any ?mode= is ignored.
-  let MODE = "additional";
 
   const data = {
     com: "COM-0022689",
@@ -27,24 +33,25 @@
     underwriter: "Karen Rivara",
     owner: "Astrus AI Integration User",
     protectedField: "Estimated / Proposed Bound Premium",
+    // stat = color-coded line status (green ok / amber needs review / red error).
+    // The revised vehicle schedule lands on Commercial Auto → amber.
     lines: [
-      { id: "sub", label: "Submission Details", kind: "sub" },
-      { id: "gl", label: "General Liability", kind: "lob" },
-      { id: "ca", label: "Commercial Auto", kind: "lob" },
-      { id: "wc", label: "Workers' Compensation", kind: "lob" },
-      { id: "xs", label: "Excess Liability", kind: "lob" }
+      { id: "sub", label: "Submission Details", kind: "sub", short: "Submission", stat: "green" },
+      { id: "gl", label: "General Liability", kind: "lob", short: "GL", stat: "green" },
+      { id: "ca", label: "Commercial Auto", kind: "lob", short: "Auto", stat: "amber" },
+      { id: "wc", label: "Workers' Compensation", kind: "lob", short: "WC", stat: "green" },
+      { id: "xs", label: "Excess Liability", kind: "lob", short: "Excess", stat: "green" }
     ],
-    // The base submission's documents (already processed in `additional` mode).
+    // Documents already on the submission (received with the original email).
     baseFiles: [
-      { name: "ACORD_125_Commercial_Application.pdf", type: "pdf", size: "1.2 MB" },
-      { name: "Vehicle_Schedule_2024.xlsx", type: "xlsx", size: "88 KB" },
-      { name: "GL_Loss_Runs_5yr.pdf", type: "pdf", size: "640 KB" },
-      { name: "WC_Experience_Mod.pdf", type: "pdf", size: "210 KB" },
-      { name: "Statement_of_Values.xlsx", type: "xlsx", size: "44 KB" }
+      { name: "ACORD_125_Commercial_Application.pdf", type: "pdf", size: "1.2 MB", received: "5/2/2026" },
+      { name: "Vehicle_Schedule_2024.xlsx", type: "xlsx", size: "88 KB", received: "5/2/2026" },
+      { name: "GL_Loss_Runs_5yr.pdf", type: "pdf", size: "640 KB", received: "5/2/2026" },
+      { name: "WC_Experience_Mod.pdf", type: "pdf", size: "210 KB", received: "5/2/2026" },
+      { name: "Statement_of_Values.xlsx", type: "xlsx", size: "44 KB", received: "5/2/2026" }
     ],
-    // Sample files offered by "add sample files": all of them on initial, the
-    // revised vehicle schedule on additional.
-    sampleAdditional: [{ name: "Vehicle_Schedule_REVISED.xlsx", type: "xlsx", size: "91 KB" }]
+    // Offered by "add sample files": the revised vehicle schedule from the follow-up.
+    sampleAdditional: [{ name: "Vehicle_Schedule_REVISED.xlsx", type: "xlsx", size: "91 KB", received: "7/13/2026" }]
   };
 
   function esc(s) {
@@ -55,118 +62,109 @@
   function extType(name) {
     const m = /\.([a-z0-9]+)$/i.exec(name || "");
     const e = (m ? m[1] : "file").toLowerCase();
-    return e === "xls" ? "xlsx" : e === "jpeg" ? "jpg" : e;
+    return e === "xls" ? "xlsx" : e === "jpeg" ? "jpg" : e === "text" ? "txt" : e;
+  }
+  function fmtSize(bytes) {
+    if (!bytes && bytes !== 0) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
   }
 
   /* ---- scope --------------------------------------------------------------
-     scope.uploaded  : [{name,type,size}]  files the user dropped / sampled
-     scope.excludedDocs : Set(name)        review toggles turned off
-     scope.whole : bool ; scope.lob : Set(lineIds)
-     scope._just : Set(name)               just-added (for checkmark animation) */
+     uploaded     : [{name,type,size,received}]  files dropped / sampled / pasted
+     excludedDocs : Set(name)   review toggles turned off (removed from this run)
+     whole        : bool        "entire submission" mode
+     overwriteAck : bool        the explicit overwrite-confirm checkbox
+     lob          : Set(lineId) lines whose RECORD (+children) will update
+     quote        : Set(lobId)  LOBs whose LOB QUOTE will update
+     _just        : Set(name)   just-added (checkmark animation) */
   function newScope() {
-    return { uploaded: [], excludedDocs: new Set(), whole: false, lob: new Set(), _just: new Set() };
+    return { uploaded: [], excludedDocs: new Set(), whole: false, overwriteAck: false, lob: new Set(), quote: new Set(), _just: new Set() };
   }
-  function alreadyProcessed() {
-    return MODE === "additional" ? data.baseFiles.slice() : [];
-  }
-  function sampleFiles() {
-    return MODE === "additional" ? data.sampleAdditional.slice() : data.baseFiles.slice();
-  }
-  function docsInPlay(scope) {
-    // already-processed (additional) + uploaded
-    return alreadyProcessed().concat(scope.uploaded);
-  }
-  function includedDocs(scope) {
-    return docsInPlay(scope).filter((f) => !scope.excludedDocs.has(f.name));
-  }
-  function selectedLines(scope) {
-    return scope.whole ? data.lines.slice() : data.lines.filter((l) => scope.lob.has(l.id));
-  }
-  function lockedLines(scope) {
-    return scope.whole ? [] : data.lines.filter((l) => !scope.lob.has(l.id));
-  }
-  function hasSelection(scope) {
-    return scope.whole || scope.lob.size > 0;
-  }
-  function selectedCount(scope) {
-    return scope.whole ? data.lines.length : scope.lob.size;
-  }
-  function hasUploads(scope) {
-    return scope.uploaded.length > 0 || alreadyProcessed().length > 0;
-  }
+  function lobLines() { return data.lines.filter((l) => l.kind === "lob"); }
+  function alreadyProcessed() { return data.baseFiles.slice(); }
+  function sampleFiles() { return data.sampleAdditional.slice(); }
+  function docsInPlay(scope) { return alreadyProcessed().concat(scope.uploaded); }
+  function includedDocs(scope) { return docsInPlay(scope).filter((f) => !scope.excludedDocs.has(f.name)); }
 
-  /* ---- mode-derived labels --------------------------------------------- */
+  function lineChecked(scope, id) { return scope.whole || scope.lob.has(id); }
+  function quoteChecked(scope, id) { return scope.whole || scope.quote.has(id); }
+  function lineTouched(scope, l) { return lineChecked(scope, l.id) || (l.kind === "lob" && quoteChecked(scope, l.id)); }
+
+  function selectedLines(scope) { return scope.whole ? data.lines.slice() : data.lines.filter((l) => scope.lob.has(l.id)); }
+  function selectedQuotes(scope) { return scope.whole ? lobLines() : lobLines().filter((l) => scope.quote.has(l.id)); }
+  function lockedLines(scope) { return scope.whole ? [] : data.lines.filter((l) => !lineTouched(scope, l)); }
+  function hasSelection(scope) { return scope.whole || scope.lob.size > 0 || scope.quote.size > 0; }
+  function selectedCount(scope) { return scope.whole ? data.lines.length : data.lines.filter((l) => lineTouched(scope, l)).length; }
+  function hasUploads(scope) { return scope.uploaded.length > 0 || alreadyProcessed().length > 0; }
+  // Reprocess is allowed only with a real selection, and the entire-submission
+  // path additionally requires the overwrite-confirm checkbox.
+  function canRun(scope) { return hasSelection(scope) && (!scope.whole || scope.overwriteAck); }
+
   const M = {
-    get finalLabel() { return MODE === "additional" ? "Reprocess" : "Process submission"; },
-    get finalShort() { return MODE === "additional" ? "Reprocess" : "Process"; },
-    get uploadTitle() { return MODE === "additional" ? "Upload additional attachments" : "Upload attachments"; },
-    get offLabel() { return MODE === "additional" ? '<span class="lock-ic">🔒</span> Locked' : "Not included"; },
-    get verb() { return MODE === "additional" ? "Populate" : "Create"; }
+    finalLabel: "Reprocess",
+    finalShort: "Reprocess",
+    uploadTitle: "Upload additional attachments",
+    offLabel: '<span class="lock-ic">🔒</span> Locked',
+    verb: "Populate"
   };
 
   function moments() {
     return [
       { num: "01", label: "Upload" },
       { num: "02", label: "Review" },
-      { num: "03", label: "Lines" },
+      { num: "03", label: "Scope" },
       { num: "04", label: M.finalShort }
     ];
   }
 
-  /* ---- badge + status strip (mode-aware) ------------------------------- */
+  /* ---- badge + status strip (color-coded per-line aggregation) --------- */
   function statusBadge() {
-    return MODE === "additional"
-      ? '<span class="slds-badge badge-attn">📎 New attachments received</span>'
-      : '<span class="slds-badge badge-draft">📄 Communication created</span>';
+    return '<span class="slds-badge badge-attn">📎 New attachments received</span>';
+  }
+  function lineStatusRow() {
+    const chips = data.lines
+      .map((l) => '<span class="ls ls--' + l.stat + '" title="' + esc(l.label) + '"><span class="ls-dot"></span>' + esc(l.short) + "</span>")
+      .join("");
+    return (
+      '<div class="cc-linestat"><span class="cc-linestat-lbl">Lines</span>' + chips +
+      '<span class="cc-linestat-key">● complete&nbsp;&nbsp;● review&nbsp;&nbsp;● error</span></div>'
+    );
   }
   function statusStripHTML() {
-    if (MODE === "additional") {
-      return (
-        '<div class="cc-status2" id="cc-status">' +
-        '<div class="cc-status2-top">' +
-        '<span class="slds-badge badge-warning cc-status2-badge">Requires Review</span>' +
-        '<span class="cc-stage"><span class="cc-stage-dot"></span>Complete</span>' +
-        "</div>" +
-        '<div class="cc-status2-metrics">' +
-        '<div class="csm"><span class="csm-v">5 / 5</span><span class="csm-l">Preprocessed</span></div>' +
-        '<div class="csm"><span class="csm-v">5 / 5</span><span class="csm-l">Extracted</span></div>' +
-        '<div class="csm"><span class="csm-v">4:22 PM</span><span class="csm-l">Completed</span></div>' +
-        "</div></div>"
-      );
-    }
     return (
       '<div class="cc-status2" id="cc-status">' +
       '<div class="cc-status2-top">' +
-      '<span class="slds-badge badge-neutral cc-status2-badge">Not processed</span>' +
-      '<span class="cc-stage cc-stage--draft">Draft</span>' +
+      '<span class="slds-badge badge-warning cc-status2-badge">Requires Review</span>' +
+      '<span class="cc-stage"><span class="cc-stage-dot"></span>Complete</span>' +
       "</div>" +
-      '<div class="cc-status2-hint">Awaiting attachments — upload to create the submission.</div>' +
+      '<div class="cc-status2-metrics">' +
+      '<div class="csm"><span class="csm-v">5 / 5</span><span class="csm-l">Preprocessed</span></div>' +
+      '<div class="csm"><span class="csm-v">5 / 5</span><span class="csm-l">Extracted</span></div>' +
+      '<div class="csm"><span class="csm-v">4:22 PM</span><span class="csm-l">Completed</span></div>' +
+      "</div>" +
+      lineStatusRow() +
       "</div>"
     );
   }
 
   /* ---- status banner (the "first tile") -------------------------------- */
   function bannerHTML() {
-    if (MODE === "additional") {
-      return (
-        '<div class="cc-banner"><span class="cc-banner-ic">✓</span>' +
-        "<div><strong>Submission created · " + esc(data.sub) + "</strong>" +
-        "<span>Upload any additional attachments, then reprocess.</span></div></div>"
-      );
-    }
     return (
       '<div class="cc-banner"><span class="cc-banner-ic">✓</span>' +
-      "<div><strong>Communication record created</strong>" +
-      "<span>Upload the attachments to process this submission.</span></div></div>"
+      "<div><strong>Submission created · " + esc(data.sub) + "</strong>" +
+      "<span>A follow-up email added new attachments. Review and reprocess when you're ready.</span></div></div>"
     );
   }
 
-  /* ---- upload step (drag-drop demo) ------------------------------------ */
+  /* ---- upload step: drag-drop + browse + paste-text, dated rows -------- */
   function uploadRow(f, justNew) {
     return (
       '<div class="up-file' + (justNew ? " just-added" : "") + '">' +
       '<span class="file-ic file-ic--' + f.type + '">' + f.type.toUpperCase() + "</span>" +
       '<span class="up-file-name">' + esc(f.name) + "</span>" +
+      '<span class="up-file-date">Rec’d ' + esc(f.received || "just now") + "</span>" +
       '<span class="up-file-size">' + esc(f.size || "") + "</span>" +
       '<span class="up-file-check" aria-label="Uploaded">✓</span>' +
       '<button class="up-file-x" data-up-remove="' + esc(f.name) + '" aria-label="Remove ' + esc(f.name) + '">✕</button>' +
@@ -175,26 +173,30 @@
   }
   function renderUploadStep(scope) {
     const list = scope.uploaded.length
-      ? '<div class="up-list">' + scope.uploaded.map((f) => uploadRow(f, scope._just.has(f.name))).join("") + "</div>"
+      ? '<div class="up-list"><div class="up-list-head">New — just added</div>' +
+        scope.uploaded.map((f) => uploadRow(f, scope._just.has(f.name))).join("") + "</div>"
       : "";
-    const alreadyNote =
-      MODE === "additional"
-        ? '<p class="up-note">' + alreadyProcessed().length + " document(s) already on this submission. Add anything new below.</p>"
-        : "";
     return (
       '<p class="cc-section-title">' + M.uploadTitle + "</p>" +
-      alreadyNote +
+      '<p class="up-note">' + alreadyProcessed().length +
+      " document(s) already on this submission (received 5/2/2026). Drag in anything new — files over 25 MB upload here directly, no email needed.</p>" +
       '<div class="up-zone" id="up-zone" tabindex="0" role="button" aria-label="Drag and drop attachments">' +
       '<div class="up-zone-ic">⬆</div>' +
       '<div class="up-zone-title">Drag &amp; drop attachments here</div>' +
       '<div class="up-zone-sub"><button class="up-link" data-up-browse type="button">browse</button> · ' +
       '<button class="up-link" data-up-sample type="button">add sample files</button></div>' +
       "</div>" +
+      // paste-text: for tabular data that arrived in the email body, not as a file
+      '<div class="up-paste">' +
+      '<button class="up-link up-paste-toggle" data-paste-toggle type="button">＋ or paste text from an email</button>' +
+      '<div class="up-paste-box" id="up-paste-box" hidden>' +
+      '<textarea class="up-paste-ta" id="up-paste-ta" rows="4" placeholder="Paste text or a table from the email body — e.g. a workers’ comp payroll table that came in the message, not as an attachment."></textarea>' +
+      '<div class="up-paste-actions"><button class="slds-btn slds-btn--brand up-paste-add" data-paste-add type="button">Add as attachment</button></div>' +
+      "</div></div>" +
       list +
       '<input type="file" id="up-input" multiple style="display:none" />'
     );
   }
-  // Wire the upload interactions. rerender() should re-render the whole card.
   function bindUploadStep(root, scope, rerender) {
     function addFiles(files) {
       const names = new Set(scope.uploaded.map((f) => f.name));
@@ -217,9 +219,7 @@
         e.preventDefault();
         zone.classList.remove("drag-over");
         const dropped = Array.from((e.dataTransfer && e.dataTransfer.files) || []).map((file) => ({
-          name: file.name,
-          type: extType(file.name),
-          size: fmtSize(file.size)
+          name: file.name, type: extType(file.name), size: fmtSize(file.size), received: "just now"
         }));
         if (dropped.length) addFiles(dropped);
       });
@@ -228,28 +228,36 @@
     if (browse && input) {
       browse.onclick = () => input.click();
       input.onchange = () => {
-        const picked = Array.from(input.files || []).map((file) => ({ name: file.name, type: extType(file.name), size: fmtSize(file.size) }));
+        const picked = Array.from(input.files || []).map((file) => ({ name: file.name, type: extType(file.name), size: fmtSize(file.size), received: "just now" }));
         if (picked.length) addFiles(picked);
       };
     }
     const sample = root.querySelector("[data-up-sample]");
     if (sample) sample.onclick = () => addFiles(sampleFiles().map((f) => ({ ...f })));
+    // paste-text box
+    const pToggle = root.querySelector("[data-paste-toggle]");
+    const pBox = root.querySelector("#up-paste-box");
+    if (pToggle && pBox) pToggle.onclick = () => { pBox.hidden = !pBox.hidden; if (!pBox.hidden) { const ta = root.querySelector("#up-paste-ta"); if (ta) ta.focus(); } };
+    const pAdd = root.querySelector("[data-paste-add]");
+    if (pAdd) pAdd.onclick = () => {
+      const ta = root.querySelector("#up-paste-ta");
+      const txt = ta ? ta.value.trim() : "";
+      if (!txt) { if (ta) ta.focus(); return; }
+      let n = 1, name = "Pasted_email_text.txt";
+      const existing = new Set(scope.uploaded.map((f) => f.name));
+      while (existing.has(name)) { n += 1; name = "Pasted_email_text_" + n + ".txt"; }
+      addFiles([{ name: name, type: "txt", size: fmtSize(txt.length), received: "just now", pasted: true }]);
+    };
     root.querySelectorAll("[data-up-remove]").forEach((b) => {
       b.onclick = () => {
-        const n = b.dataset.upRemove;
-        scope.uploaded = scope.uploaded.filter((f) => f.name !== n);
+        const nm = b.dataset.upRemove;
+        scope.uploaded = scope.uploaded.filter((f) => f.name !== nm);
         rerender();
       };
     });
   }
-  function fmtSize(bytes) {
-    if (!bytes && bytes !== 0) return "";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
-    return (bytes / 1048576).toFixed(1) + " MB";
-  }
 
-  /* ---- review step (toggle attachments) -------------------------------- */
+  /* ---- review step: dated rows, remove-from-record clarity ------------- */
   function reviewRow(f, scope) {
     const on = !scope.excludedDocs.has(f.name);
     return (
@@ -258,11 +266,12 @@
       '" role="switch" aria-checked="' + on + '" aria-label="Include ' + esc(f.name) + '"></button>' +
       '<span class="file-ic file-ic--' + f.type + '">' + f.type.toUpperCase() + "</span>" +
       '<span class="doc-name">' + esc(f.name) + "</span>" +
+      '<span class="doc-date">Rec’d ' + esc(f.received || "just now") + "</span>" +
       '<span class="doc-size">' + esc(f.size || "") + "</span></div>"
     );
   }
   function renderReview(scope) {
-    const already = alreadyProcessed().filter((f) => docNotRemoved(scope, f));
+    const already = alreadyProcessed();
     const uploaded = scope.uploaded;
     const inCount = includedDocs(scope).length;
     const total = docsInPlay(scope).length;
@@ -277,35 +286,115 @@
       return '<div class="docs-block"><p class="docs-empty">No attachments yet — go back and upload some.</p></div>';
     }
     return (
-      '<div class="docs-note"><span class="docs-note-ic">⚠️</span><span>Only turn off documents that are <strong>exact or older versions</strong> of the newly uploaded ones. Every other document is needed to cross-reference, calculate and produce all fields.</span></div>' +
+      '<div class="docs-note"><span class="docs-note-ic">⚠️</span><span>Only turn off documents that are <strong>exact or older versions</strong> of the newly uploaded ones (check the <strong>date received</strong>). Every other document is needed to cross-reference, calculate and produce all fields.</span></div>' +
       '<div class="docs-block">' +
       '<div class="docs-head"><strong>Review attachments</strong><span class="docs-count">' + inCount + " of " + total + " included</span></div>" +
-      group(MODE === "additional" ? "New — uploaded" : "Uploaded", uploaded) +
+      group("New — uploaded", uploaded) +
       group("Already processed", already) +
+      '<p class="docs-foot">Turning a document off removes it from <strong>this reprocess only</strong> — the file stays on the record. Nothing is deleted; only an admin can permanently delete an intake file.</p>' +
       "</div>"
     );
   }
-  function docNotRemoved() { return true; }
 
-  /* ---- run summary (mode-aware) ---------------------------------------- */
+  /* ---- scope picker: per-LOB + per-LOB-Quote, overwrite-confirm -------- */
+  function countChip(scope) {
+    const n = selectedCount(scope);
+    return '<span class="cc-count' + (n === 0 ? " none" : "") + '">' + n + " of " + data.lines.length + " lines</span>";
+  }
+  function scopeRow(scope, l) {
+    const lineOn = lineChecked(scope, l.id);
+    const quoteOn = quoteChecked(scope, l.id);
+    const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
+    const lineBox =
+      '<button class="ck-check' + (lineOn ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + lineOn + '" aria-label="Update ' + esc(l.label) + '">' + (lineOn ? "✓" : "") + "</button>";
+    const quoteCell = l.kind === "lob"
+      ? '<button class="ck-check' + (quoteOn ? " on" : "") + '" data-quote="' + l.id + '" aria-pressed="' + quoteOn + '" aria-label="Update quote for ' + esc(l.label) + '">' + (quoteOn ? "✓" : "") + "</button>"
+      : '<span class="scope-na" aria-hidden="true">—</span>';
+    const touched = lineTouched(scope, l);
+    return (
+      '<div class="scope-row' + (touched ? " on" : " locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
+      '<span class="scope-name">' + esc(l.label) + tag + (touched ? "" : ' <span class="scope-lock">' + M.offLabel + "</span>") + "</span>" +
+      '<span class="scope-cell">' + lineBox + "</span>" +
+      '<span class="scope-cell">' + quoteCell + "</span>" +
+      "</div>"
+    );
+  }
+  function renderScopePicker(scope, opts) {
+    opts = opts || {};
+    const titleRow = opts.hideTitle
+      ? '<div class="cc-title-row"><span></span>' + countChip(scope) + "</div>"
+      : '<div class="cc-title-row"><p class="cc-section-title">Choose what to reprocess</p>' + countChip(scope) + "</div>";
+    const forced =
+      '<div class="line-list">' +
+      data.lines.map((l) =>
+        '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + esc(l.label) +
+        (l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "") +
+        '</span><span class="line-state">' + (l.kind === "lob" ? "Line + quote " : "Will update ") + "✓</span></div>"
+      ).join("") + "</div>";
+    const grid =
+      '<div class="scope-grid">' +
+      '<div class="scope-grid-head"><span>Line of business</span><span>Update line</span><span>Update quote</span></div>' +
+      data.lines.map((l) => scopeRow(scope, l)).join("") +
+      '<p class="scope-grid-foot">“Update line” rewrites that line and its exposures, schedules, rates and losses. “Update quote” rewrites the LOB Quote (coverages, limits). Leave a box off and that data is left exactly as it is.</p>' +
+      "</div>";
+    return (
+      titleRow +
+      '<div class="cc-mode">' +
+      '<div class="cc-mode-opt' + (scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span>' +
+      '<div><div class="cc-mode-title">Entire submission (' + data.lines.length + ")</div>" +
+      '<div class="cc-mode-desc">Overwrite every line and every quote with the new extraction.</div></div></div>' +
+      (scope.whole
+        ? '<label class="ovr-ack' + (scope.overwriteAck ? " on" : "") + '" data-ovr><span class="ovr-box">' + (scope.overwriteAck ? "✓" : "") + "</span>" +
+          "<span>Yes — overwrite all " + data.lines.length + " lines and their quotes. Hand-entered values on those lines will be replaced. This can’t be undone.</span></label>"
+        : "") +
+      '<div class="cc-mode-opt' + (!scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span>' +
+      '<div><div class="cc-mode-title">Only the lines I choose</div>' +
+      '<div class="cc-mode-desc">Pick each line — and each quote — to update. Everything else stays locked.</div></div></div>' +
+      "</div>" +
+      (scope.whole ? forced : grid)
+    );
+  }
+  function bindScopePicker(root, scope, rerender) {
+    root.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => {
+      const whole = b.dataset.mode === "whole";
+      scope.whole = whole;
+      if (!whole) scope.overwriteAck = false;
+      rerender();
+    }));
+    const ovr = root.querySelector("[data-ovr]");
+    if (ovr) ovr.onclick = (e) => { e.preventDefault(); scope.overwriteAck = !scope.overwriteAck; rerender(); };
+    root.querySelectorAll("[data-line]").forEach((b) => (b.onclick = () => {
+      const id = b.dataset.line;
+      scope.lob.has(id) ? scope.lob.delete(id) : scope.lob.add(id);
+      rerender();
+    }));
+    root.querySelectorAll("[data-quote]").forEach((b) => (b.onclick = () => {
+      const id = b.dataset.quote;
+      scope.quote.has(id) ? scope.quote.delete(id) : scope.quote.add(id);
+      rerender();
+    }));
+  }
+
+  /* ---- run summary ----------------------------------------------------- */
   function computeRunSummary(scope) {
     const inDocs = includedDocs(scope);
-    const sel = selectedLines(scope);
-    const locked = lockedLines(scope);
     const lines = [];
     lines.push({ kind: "docs", text: "Reads " + inDocs.length + " of " + docsInPlay(scope).length + " attachments." });
-    if (sel.length) lines.push({ kind: "populate", text: M.verb + "s " + sel.map((l) => l.label).join(", ") + "." });
-    if (locked.length) {
-      lines.push({
-        kind: "lock",
-        text: (MODE === "additional" ? "Locked: " : "Not included: ") + locked.map((l) => l.label).join(", ") + "."
-      });
+    if (scope.whole) {
+      lines.push({ kind: "populate", text: "Overwrites all " + data.lines.length + " lines and their quotes." });
+    } else {
+      const recs = selectedLines(scope);
+      const qs = selectedQuotes(scope);
+      const locked = lockedLines(scope);
+      if (recs.length) lines.push({ kind: "populate", text: "Updates " + recs.map((l) => l.label).join(", ") + "." });
+      if (qs.length) lines.push({ kind: "quote", text: "Updates the quote for " + qs.map((l) => l.label).join(", ") + "." });
+      if (locked.length) lines.push({ kind: "lock", text: "Locked (untouched): " + locked.map((l) => l.label).join(", ") + "." });
     }
-    lines.push({ kind: "protect", text: data.protectedField + " protected." });
+    lines.push({ kind: "protect", text: data.protectedField + " is never overwritten." });
     return { lines: lines, selectedCount: selectedCount(scope), total: data.lines.length, whole: scope.whole, includedDocs: inDocs.length };
   }
 
-  /* ---- process / reprocess (guard + confirm + toast) ------------------- */
+  /* ---- toast + confirm modal ------------------------------------------- */
   function toast(variant, title, message, ms) {
     let wrap = document.querySelector(".toast-wrap");
     if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; document.body.appendChild(wrap); }
@@ -335,46 +424,47 @@
     });
   }
   async function runProcess(scope) {
-    const sel = selectedLines(scope);
-    const inDocs = includedDocs(scope);
-    const selText = sel.length ? esc(sel.map((l) => l.label).join(", ")) : "the selected lines";
-    if (MODE === "additional") {
-      const ok = await confirmModal({
-        title: scope.whole ? "Reprocess the entire submission?" : "Reprocess " + sel.length + " of " + data.lines.length + " lines?",
-        body: "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
-          "</strong> and populates <strong>" + selText + "</strong>.</p>" +
-          (scope.whole ? "" : "<p>Every other line stays locked.</p>") +
-          "<p><strong>" + esc(data.protectedField) + "</strong> is protected. This can’t be undone.</p>",
-        confirmLabel: scope.whole ? "Reprocess submission" : "Reprocess " + sel.length + " line" + (sel.length === 1 ? "" : "s"),
-        destructive: true
-      });
-      if (!ok) return false;
-      toast("success", "Reprocess started", "Only the lines you chose will populate when it finishes.");
-      return true;
+    if (!canRun(scope)) {
+      toast("warning", scope.whole ? "Confirm the overwrite" : "Nothing selected",
+        scope.whole ? "Check the overwrite box to reprocess the entire submission." : "Pick at least one line or quote to reprocess.");
+      return false;
     }
+    const inDocs = includedDocs(scope);
+    const recs = selectedLines(scope);
+    const qs = selectedQuotes(scope);
+    let body;
+    if (scope.whole) {
+      body = "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") +
+        "</strong> and <strong>overwrites all " + data.lines.length + " lines and their quotes</strong>.</p>" +
+        "<p>Hand-entered values on every line will be replaced.</p>";
+    } else {
+      const recTxt = recs.length ? esc(recs.map((l) => l.label).join(", ")) : "no line records";
+      const qTxt = qs.length ? esc(qs.map((l) => l.label).join(", ")) : "no quotes";
+      body = "<p>Reads the <strong>" + inDocs.length + " included attachment" + (inDocs.length === 1 ? "" : "s") + "</strong>.</p>" +
+        "<p>Updates lines: <strong>" + recTxt + "</strong>.<br/>Updates quotes: <strong>" + qTxt + "</strong>.</p>" +
+        "<p>Every other line stays locked.</p>";
+    }
+    body += "<p><strong>" + esc(data.protectedField) + "</strong> is protected and won’t be overwritten. This can’t be undone.</p>";
     const ok = await confirmModal({
-      title: "Process this submission?",
-      body: "<p>Astrus reads all <strong>" + inDocs.length + " attachment" + (inDocs.length === 1 ? "" : "s") +
-        "</strong> and creates the submission — <strong>all lines of business</strong>.</p>" +
-        "<p>A submission number will be assigned when processing completes.</p>",
-      confirmLabel: "Process submission",
-      destructive: false
+      title: scope.whole ? "Reprocess the entire submission?" : "Reprocess " + selectedCount(scope) + " of " + data.lines.length + " lines?",
+      body: body,
+      confirmLabel: scope.whole ? "Overwrite & reprocess" : "Reprocess",
+      destructive: true
     });
     if (!ok) return false;
-    toast("success", "Submission processing started", "A submission number will be created when the engine finishes.");
+    toast("success", "Reprocess started", scope.whole ? "The whole submission will repopulate when it finishes." : "Only the lines and quotes you chose will populate.");
     return true;
   }
 
-  /* ---- moment stepper (leading 'Created' status tile + 4 steps) -------- */
+  /* ---- moment stepper (leading 'Submission' tile + 4 steps) ------------ */
   function momentStepper(current, onNav, maxReached) {
     if (maxReached == null) maxReached = current;
     const bar = document.createElement("div");
     bar.className = "cc-stepper";
     bar.setAttribute("role", "tablist");
-    // leading status tile (non-navigable)
     const s = document.createElement("div");
     s.className = "cc-step is-done cc-step--status";
-    s.innerHTML = '<span class="cc-step-num">✓</span><span class="cc-step-label">' + (MODE === "additional" ? "Submission" : "Created") + "</span>";
+    s.innerHTML = '<span class="cc-step-num">✓</span><span class="cc-step-label">Submission</span>';
     bar.appendChild(s);
     moments().forEach((m, i) => {
       const reached = i <= maxReached;
@@ -390,20 +480,12 @@
     return bar;
   }
 
-  // Gate helpers — DISABLED (demo can click through the whole flow without
-  // uploading or selecting). Return null so nothing blocks navigation.
+  // Free navigation — no gate blocks moving between steps.
   function uploadError() { return null; }
   function lineError() { return null; }
 
   /* ---- static Salesforce chrome ---------------------------------------- */
   function sideCardsHTML() {
-    if (MODE !== "additional") {
-      return (
-        '<section class="sf-card side-card"><header><span class="side-ic">📇</span> Activity</header>' +
-        '<div class="sf-card-body side-activity"><div class="side-tabs"><span class="on">Log a Call</span><span>New Task</span><span>Email</span></div>' +
-        '<div class="side-empty">No upcoming activities.</div></div></section>'
-      );
-    }
     return (
       '<section class="sf-card side-card"><header><span class="side-ic">🗂</span> Submission Update Logs (1)</header>' +
       '<div class="sf-card-body side-log">' +
@@ -416,14 +498,10 @@
   }
   function chromeHTML(conceptName) {
     const d = data;
-    const relatedSub = MODE === "additional"
-      ? '<div class="sf-hl"><dt>Related Submission</dt><dd><a>' + esc(d.sub) + "</a></dd></div>"
-      : '<div class="sf-hl"><dt>Related Submission</dt><dd>—</dd></div>';
-    const filesCount = MODE === "additional" ? d.baseFiles.length : 0;
     return (
       '<div class="proto-ribbon"><span>Astrus prototype</span><span class="dot">•</span>' +
       "<span><strong>" + esc(conceptName) + " · Reprocess</strong></span><span class=\"dot\">•</span>" +
-      '<a href="../../index.html">← All concepts</a><span class="dot">•</span>' +
+      '<a href="../../index.html">← All options</a><span class="dot">•</span>' +
       "<span>Salesforce chrome is a non-clickable mock; only the AI Engine Status card responds.</span></div>" +
       '<div class="sf-globalnav">' +
       '<div class="sf-waffle"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
@@ -445,11 +523,11 @@
       '<div class="sf-record-actions"><button class="slds-btn" tabindex="-1">Edit</button>' +
       '<button class="slds-btn" tabindex="-1">Change Owner</button></div></div>' +
       '<dl class="sf-highlights">' +
-      relatedSub +
+      '<div class="sf-hl"><dt>Related Submission</dt><dd><a>' + esc(d.sub) + "</a></dd></div>" +
       '<div class="sf-hl"><dt>Status</dt><dd><span class="slds-badge badge-success">Success</span></dd></div>' +
       '<div class="sf-hl"><dt>Assigned Underwriter</dt><dd>' + esc(d.underwriter) + "</dd></div>" +
       '<div class="sf-hl"><dt>Type</dt><dd>Communication</dd></div>' +
-      '<div class="sf-hl"><dt>Files</dt><dd>' + filesCount + "</dd></div></dl>" +
+      '<div class="sf-hl"><dt>Files</dt><dd>' + d.baseFiles.length + "</dd></div></dl>" +
       '<div class="sf-subnav"><span class="item active">Details</span><span class="item">Related</span><span class="item">Files</span></div></div>' +
       '<div class="sf-body"><div class="sf-col-left">' +
       '<section class="sf-card"><header><span class="ic">▾</span> Details</header><div class="sf-card-body"><div class="sf-fieldgrid">' +
@@ -458,7 +536,7 @@
       '<div class="sf-field"><div class="lbl">To Address</div><div class="val"><a>' + esc(d.to) + "</a></div></div>" +
       '<div class="sf-field"><div class="lbl">Status</div><div class="val">Success</div></div>' +
       '<div class="sf-field"><div class="lbl">CC Address</div><div class="val">&nbsp;</div></div>' +
-      '<div class="sf-field"><div class="lbl">Related Submission</div><div class="val">' + (MODE === "additional" ? '<a>' + esc(d.sub) + "</a>" : "&nbsp;") + "</div></div>" +
+      '<div class="sf-field"><div class="lbl">Related Submission</div><div class="val"><a>' + esc(d.sub) + "</a></div></div>" +
       '<div class="sf-field full"><div class="lbl">Subject</div><div class="val">' + esc(d.subject) + "</div></div>" +
       '<div class="sf-field"><div class="lbl">Type</div><div class="val">Communication</div></div>' +
       '<div class="sf-field"><div class="lbl">Message Date</div><div class="val">' + esc(d.messageDate) + "</div></div>" +
@@ -477,6 +555,20 @@
     );
   }
 
+  /* ---- gated entry: nothing shows until "Reprocessing options" -------- */
+  function renderGate(mount, onOpen) {
+    mount.innerHTML =
+      '<div class="cc-gate">' +
+      '<div class="cc-gate-head"><span class="cc-gate-ic">📎</span>' +
+      "<div><strong>New attachments received</strong>" +
+      "<span>A follow-up email added files to this Communication. Nothing has been reprocessed — that’s always your call.</span></div></div>" +
+      '<button class="slds-btn slds-btn--brand cc-gate-btn" id="cc-open" type="button">Reprocessing options →</button>' +
+      '<p class="cc-gate-foot">Opens the guided reprocess panel. No line is touched until you review the files, choose the scope, and confirm.</p>' +
+      "</div>";
+    const b = mount.querySelector("#cc-open");
+    if (b) b.onclick = onOpen;
+  }
+
   function boot(concept) {
     const conceptName = concept.name || "Concept";
     document.body.innerHTML = chromeHTML(conceptName);
@@ -484,7 +576,7 @@
     if (badgeMount) badgeMount.innerHTML = statusBadge();
     const mount = document.getElementById("cc-body");
     const ctx = {
-      mode: MODE,
+      mode: "additional",
       data: data,
       esc: esc,
       toast: toast,
@@ -495,15 +587,22 @@
       offLabel: M.offLabel,
       verb: M.verb,
       newScope: newScope,
+      lobLines: lobLines,
       alreadyProcessed: alreadyProcessed,
       sampleFiles: sampleFiles,
       docsInPlay: docsInPlay,
       includedDocs: includedDocs,
       selectedLines: selectedLines,
+      selectedQuotes: selectedQuotes,
       lockedLines: lockedLines,
+      lineChecked: lineChecked,
+      quoteChecked: quoteChecked,
+      lineTouched: lineTouched,
       selectedCount: selectedCount,
+      countChip: countChip,
       hasSelection: hasSelection,
       hasUploads: hasUploads,
+      canRun: canRun,
       uploadError: uploadError,
       lineError: lineError,
       bannerHTML: bannerHTML,
@@ -511,15 +610,20 @@
       bindUploadStep: bindUploadStep,
       renderReview: renderReview,
       renderFiles: renderReview,
+      renderScopePicker: renderScopePicker,
+      bindScopePicker: bindScopePicker,
       computeRunSummary: computeRunSummary,
       runProcess: runProcess,
       runReprocess: runProcess,
       momentStepper: momentStepper,
       statusBadge: statusBadge
     };
-    concept.render(mount, ctx);
+    function openFlow() { concept.render(mount, ctx); }
+    // Deep-link straight into the panel with ?open=1 (skips the entry gate).
+    if (/[?&]open=1/.test(location.search)) openFlow();
+    else renderGate(mount, openFlow);
     document.title = "Astrus Reprocess · " + conceptName;
   }
 
-  window.ASTRUS = { data: data, mode: MODE, esc: esc, toast: toast, confirmModal: confirmModal, newScope: newScope, boot: boot };
+  window.ASTRUS = { data: data, mode: "additional", esc: esc, toast: toast, confirmModal: confirmModal, newScope: newScope, boot: boot };
 })();

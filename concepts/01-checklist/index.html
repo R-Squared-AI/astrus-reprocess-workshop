@@ -55,40 +55,24 @@
             '<div class="cc-actions"><span class="spacer"></span><button class="slds-btn slds-btn--brand" data-next>Next: review →</button></div>';
         }
         function mReview() {
-          return '<p class="cc-section-title">Review attachments</p>' + CTX.renderReview(state.scope) + errHTML() +
-            '<div class="cc-actions"><button class="slds-btn" data-back>← Upload</button><span class="spacer"></span><button class="slds-btn slds-btn--brand" data-next>Next: lines →</button></div>';
-        }
-        function lineRow(l) {
-          const tag = l.kind === "sub" ? '<span class="line-sub-tag">Submission-level</span>' : "";
-          if (state.scope.whole) {
-            return '<div class="line-row forced' + (l.kind === "sub" ? " is-sub" : "") + '"><span class="line-name">' + CTX.esc(l.label) + tag + '</span><span class="line-state">Will ' + CTX.verb.toLowerCase() + ' ✓</span></div>';
-          }
-          const on = state.scope.lob.has(l.id);
-          return (
-            '<div class="line-row ' + (on ? "on" : "locked") + (l.kind === "sub" ? " is-sub" : "") + '">' +
-            '<button class="ck-check' + (on ? " on" : "") + '" data-line="' + l.id + '" aria-pressed="' + on + '">' + (on ? "✓" : "") + "</button>" +
-            '<span class="line-name">' + CTX.esc(l.label) + tag + "</span>" +
-            '<span class="line-state">' + (on ? "Will " + CTX.verb.toLowerCase() : CTX.offLabel) + "</span></div>"
-          );
+          return CTX.renderReview(state.scope) + errHTML() +
+            '<div class="cc-actions"><button class="slds-btn" data-back>← Upload</button><span class="spacer"></span><button class="slds-btn slds-btn--brand" data-next>Next: scope →</button></div>';
         }
         function mLines() {
-          const rows = CTX.data.lines.map(lineRow).join("");
           return (
-            '<div class="cc-title-row"><p class="cc-section-title">Choose what to ' + CTX.verb.toLowerCase() + "</p>" + countChip() + "</div>" +
-            '<div class="cc-mode">' +
-            '<div class="cc-mode-opt' + (state.scope.whole ? " on" : "") + '" data-mode="whole"><span class="cc-mode-radio"></span><div class="cc-mode-title">Entire submission (' + CTX.data.lines.length + ")</div></div>" +
-            '<div class="cc-mode-opt' + (!state.scope.whole ? " on" : "") + '" data-mode="selected"><span class="cc-mode-radio"></span><div class="cc-mode-title">Only the lines I choose</div></div></div>' +
-            '<div class="line-list">' + rows + "</div>" +
+            CTX.renderScopePicker(state.scope) +
             runSummaryHTML() + errHTML() +
             '<div class="cc-actions"><button class="slds-btn" data-back>← Review</button><span class="spacer"></span><button class="slds-btn slds-btn--brand" data-next>Next →</button></div>'
           );
         }
         function mFinal() {
+          const runnable = CTX.canRun(state.scope);
           return (
             '<div class="cc-title-row"><p class="cc-section-title">' + CTX.finalLabel + "</p>" + countChip() + "</div>" +
             runSummaryHTML() +
-            '<div class="cc-actions"><button class="slds-btn" data-back>← Lines</button><span class="spacer"></span>' +
-            '<button class="slds-btn slds-btn--brand" data-run>' + CTX.finalLabel + ' →</button></div>'
+            (runnable ? "" : '<p class="cc-hint">' + (state.scope.whole ? "Confirm the overwrite on the Scope step to continue." : "Pick at least one line or quote on the Scope step.") + "</p>") +
+            '<div class="cc-actions"><button class="slds-btn" data-back>← Scope</button><span class="spacer"></span>' +
+            '<button class="slds-btn slds-btn--brand" data-run' + (runnable ? "" : " disabled") + ">" + CTX.finalLabel + " →</button></div>"
           );
         }
 
@@ -107,8 +91,7 @@
           const bk = box.querySelector("[data-back]");
           if (bk) bk.onclick = back;
           box.querySelectorAll(".doc-toggle").forEach((b) => (b.onclick = () => { const n = b.dataset.doc; state.scope.excludedDocs.has(n) ? state.scope.excludedDocs.delete(n) : state.scope.excludedDocs.add(n); render(); }));
-          box.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { state.scope.whole = b.dataset.mode === "whole"; render(); }));
-          box.querySelectorAll("[data-line]").forEach((b) => (b.onclick = () => { const id = b.dataset.line; state.scope.lob.has(id) ? state.scope.lob.delete(id) : state.scope.lob.add(id); render(); }));
+          CTX.bindScopePicker(box, state.scope, render);
           const rp = box.querySelector("[data-run]");
           if (rp) rp.onclick = async () => { const ok = await CTX.runProcess(state.scope); if (ok) { state.scope = ASTRUS.newScope(); state.max = 0; go(0); } };
         }

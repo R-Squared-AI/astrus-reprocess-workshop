@@ -28,8 +28,23 @@ The engine logic is **already built** (RFC `reprocess_control_and_com_file_linki
 
 There is one flow — **Reprocess**. A submission already exists, new attachments
 have landed on the Communication, and the underwriter steps through
-**Upload → Review → Lines → Reprocess**. (The earlier "New submission" entry and
+**Upload → Review → Scope → Reprocess**. (The earlier "New submission" entry and
 the Attachment-Driven concept were removed.)
+
+Every option carries the same rules, drawn from the Jul workshop:
+
+- **Gated entry** — the panel stays hidden behind one **"Reprocessing options"**
+  button; nothing fires or expands until the underwriter opens it.
+- **Upload** — drag-drop / browse, plus a **paste-text** box for tabular data that
+  arrived in the email body (not as a file). New files sit on top; every file shows
+  a **date received**.
+- **Review** — toggle off only exact/older versions; turning a doc off **removes it
+  from this run only** (the file stays on the record — nothing is deleted).
+- **Scope** — **per-LOB and per-LOB-Quote** checkboxes. "Entire submission" requires
+  an explicit **overwrite-confirm** checkbox. Unpicked lines stay locked and their
+  hand-entered work is preserved.
+- **Protected** — Estimated / Proposed Bound Premium is never overwritten.
+- **Status** — color-coded per-line aggregation (green / amber / red).
 
 ## Notes
 
