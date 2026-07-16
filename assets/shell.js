@@ -636,14 +636,16 @@
           .slice(0, 4)
           .map((d, i) => ({ html: HTML[i], el: d, kind: "dot" }));
       }
-      // Timeline: one note on the active node; point at its title, not content.
+      // Timeline: one note on the active node. Point at its numbered DOT and
+      // stop LEFT of it (kind:"dot") — the title sits right of the dot, so
+      // aiming at the title would drag the line straight across the dot.
       if (body.querySelector(".tl-rail")) {
         const active = body.querySelector(".tl-node--active");
         if (!active) return [];
         const btn = active.querySelector("[data-node]");
         const idx = btn ? Number(btn.dataset.node) : 0;
-        const head = active.querySelector(".tl-head-title") || active.querySelector(".tl-head") || active;
-        return [{ html: HTML[idx], el: head, kind: "header" }];
+        const dot = active.querySelector(".tl-dot") || active;
+        return [{ html: HTML[idx], el: dot, kind: "dot" }];
       }
       // Checklist: one note on the current step; point at its SECTION HEADER
       // (the "Review attachments" / "Choose what to reprocess" title) — never at
