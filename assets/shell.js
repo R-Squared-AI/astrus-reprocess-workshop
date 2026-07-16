@@ -692,9 +692,11 @@
       svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:58;";
       svg.setAttribute("width", col.clientWidth);
       svg.setAttribute("height", col.scrollHeight);
+      // userSpaceOnUse → arrowhead is a fixed ~15px, NOT scaled 5x by stroke-width
+      // (which was making a giant triangle that overhung the dots).
       svg.innerHTML =
-        '<defs><marker id="tourArrowHead" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">' +
-        '<path d="M0,0 L7,3.2 L0,6.4 Z" fill="#e11d1d"></path></marker></defs>';
+        '<defs><marker id="tourArrowHead" markerUnits="userSpaceOnUse" markerWidth="15" markerHeight="13" refX="13" refY="6.5" orient="auto">' +
+        '<path d="M0,0 L15,6.5 L0,13 Z" fill="#e11d1d"></path></marker></defs>';
       col.appendChild(svg);
 
       const built = items
@@ -711,9 +713,9 @@
           return {
             note: note,
             bh: note.firstChild.offsetHeight || 80,
-            // Dots: stop ~8px LEFT of the dot so the number stays visible.
-            // Headers: land at the title's left edge, not inside the content.
-            tx: ar.left - cr.left + (it.kind === "dot" ? -8 : 4),
+            // Dots: path ends 12px left of the dot; arrowhead tip (end+2) lands
+            // ~10px clear of the number. Headers: land at the title edge.
+            tx: ar.left - cr.left + (it.kind === "dot" ? -12 : 4),
             ty: ar.top + ar.height / 2 - cr.top
           };
         })
